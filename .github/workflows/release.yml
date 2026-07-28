@@ -46,6 +46,21 @@ jobs:
       # installs and imports as a consumer would, including the publishConfig
       # dist/ substitution that only materialises inside the tarball.
       - run: pnpm verify:dist
+      # Prove the token authenticates BEFORE the first upload. `pnpm -r publish`
+      # uploads one package at a time, so an auth failure partway through leaves
+      # a partial release — and a published version is permanent after 72 hours.
+      # A 403 here costs nothing; the same 403 on package six does not.
+      - name: Check npm auth
+        run: |
+          who=$(npm whoami 2>&1) || {
+            echo "::error::NPM_TOKEN did not authenticate: $who"
+            echo "A token needs 2FA bypass to publish from CI — use a granular"
+            echo "access token with bypass enabled, or a classic Automation token."
+            exit 1
+          }
+          echo "authenticated as $who"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       # `pnpm -r publish`, not `npm publish`: the packages depend on each other
       # through `workspace:*`, and only pnpm rewrites that to the real version
       # range on the way out. npm would publish the literal `workspace:*` spec,
