@@ -72,10 +72,35 @@ jobs:
       # Packages whose version already exists in the registry are skipped, so
       # bumping one package and tagging does not republish the other eight.
       #
-      # --provenance attests each tarball to this workflow run. It needs the
+      # Provenance attests each tarball to this workflow run. It needs the
       # id-token: write permission above, a public repo, and a `repository`
-      # field in the package manifest matching this one — all nine already
-      # declare git+https://github.com/mydaogs/kit.git.
-      - run: pnpm -r publish --access public --no-git-checks --provenance
+      # field in the manifest matching this one — all eleven declare
+      # git+https://github.com/mydaogs/kit.git.
+      #
+      # Configured by env, not by `--provenance`: pnpm does not accept that
+      # flag (it is absent from `pnpm publish --help`) and swallowed it in
+      # silence during the 0.2.0 release, which published with no attestation
+      # while reporting success. NPM_CONFIG_PROVENANCE reaches npm through its
+      # own config layer instead.
+      - run: pnpm -r publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+      # Verify the attestation actually landed rather than trusting the setting.
+      # This runs after an irreversible step on purpose: it cannot prevent a
+      # provenance-less release, but it turns one into a loud failure that says
+      # to cut the next patch with provenance, instead of a green run hiding it.
+      - name: Verify provenance landed
+        run: |
+          missing=""
+          for dir in packages/*/; do
+            name=$(node -p "require('./${dir}package.json').name")
+            version=$(node -p "require('./${dir}package.json').version")
+            att=$(npm view "$name@$version" dist.attestations --json 2>/dev/null || echo "")
+            if [ -z "$att" ] || [ "$att" = "null" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::published without provenance:$missing"
+            exit 1
+          fi
+          echo "provenance attached to every package"
