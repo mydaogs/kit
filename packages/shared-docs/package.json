@@ -1,0 +1,24 @@
+{
+  "name": "@mydaogs/shared-docs",
+  "version": "0.1.0",
+  "description": "Cross-cutting engineering docs for the kit: rules, architecture decisions, and patterns that belong to no single package",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mydaogs/kit.git",
+    "directory": "packages/shared-docs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "rules",
+    "decisions",
+    "features",
+    "units",
+    "README.md"
+  ],
+  "scripts": {
+    "check-links": "node ./check-links.mjs"
+  }
+}

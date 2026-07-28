@@ -1,0 +1,42 @@
+{
+  "name": "@mydaogs/cache-handler",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mydaogs/kit.git",
+    "directory": "packages/cache-handler"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "type": "module",
+  "description": "Distributed Next.js cache handler over a shared Redis tag store, plus a cross-app invalidation publisher",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "check:no-bare-specifiers": "! grep -rnE \"from \\\"@mydaogs/\" src/ 2>/dev/null",
+    "lint": "eslint src --max-warnings 0",
+    "compile": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "pnpm compile"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

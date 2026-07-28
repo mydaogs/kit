@@ -1,0 +1,39 @@
+# [ARCH] - Durable Pending Transaction Registry
+
+## Description
+
+The `tx_sync:<hash>` browser registry preserves transaction metadata, receipt reconciliation, retry scheduling, toast recovery, and cross-tab action locks. It deliberately does not contain a render payload: all UI shows server or chain truth until reconciliation invalidates and refetches it
+
+This is the load-bearing design decision. Storing no projected values sidesteps optimistic-UI reconciliation entirely — there is never a local value that can disagree with the chain
+
+## Behavior
+
+- `useAppWriteContract` queues cross-tab ownership before publishing a hash, then immediately persists a non-empty `pendingItems` tuple with entity scope, conflict key, variant, and required action key; receipt polling begins only after ownership is granted
+- Entity, action, and conflict identifiers come from shared typed `TX_SYNC_ENTITY`, `TX_SYNC_ACTION`, and `TX_SYNC_CONFLICT` vocabularies, and composite conflict lookups use a shared builder so producers and consumers cannot silently drift
+- The persisted shape is version 1. Hydration accepts only complete v1 per-hash entries with recognized entity, action, and conflict identifiers, and deletes any entry that fails validation
+- `usePendingTxScope` is a pure selector that exposes pending IDs, visible status entries, effective account-independent conflict lookups, and required action metadata without projecting values into server data; reconnecting wallets temporarily admit every account before strict account matching resumes
+- Pending and reconciling entries block a matching action across tabs and reloads; terminal warning entries remain visible for badges but intentionally do not block retries
+- Exact `actionKey` matches restore the originating control's loading state after reload, while every control sharing its conflict key remains disabled
+- The coordinator retains receipt polling, backend-sync retries, refetch invalidation, ownership locks, and reload-resume toast behavior
+- If durable storage is unavailable after submission, the live hook and same-session watcher still track and reconcile the receipt; retry retention, cross-tab recovery, and reload recovery are disabled for that transaction
+- A pending badge is only rendered on real rows or surfaces and derives its pending, retrying, or warning label from the shared translation namespace
+- Write controllers remain mounted when their own action can change conditional UI, since a watcher handoff cannot carry callback closures
+
+## Conflict key vs action key
+
+Two separate identifiers, because they answer different questions:
+
+- **`conflictKey`** — which controls must be disabled. Every control touching the same entity-and-operation shares one conflict key, so an in-flight write disables all of them
+- **`actionKey`** — which control was the originator. Only the exact match restores its own spinner after a reload
+
+Scope conflict keys to the operation, not the entity alone: an in-flight terms update should block the edit affordance without colliding with unrelated publish/cancel operations on the same record. Conversely, reuse an existing conflict key when two operations genuinely contend for the same onchain position, so they conflict automatically without a new key
+
+## Related files
+
+- `<monorepo>/apps/app/src/lib/utils/optimisticTxSyncStorage.ts`
+- `<monorepo>/apps/app/src/lib/hooks/usePendingTxScope.ts`
+- `<monorepo>/apps/app/src/lib/hooks/txSyncEntityTypes.ts`
+- `<monorepo>/apps/app/src/lib/hooks/useAppWriteContract.ts`
+- `<monorepo>/apps/app/src/lib/utils/pendingTransactionToast.ts`
+- `<monorepo>/apps/app/src/components/PendingTransactionsWatcher/PendingTransactionsWatcher.tsx`
+- `<monorepo>/apps/app/src/components/PendingTxBadge/PendingTxBadge.tsx`
