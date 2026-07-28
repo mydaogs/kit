@@ -16,7 +16,7 @@ which has no React in its dependency graph
 These docs are the single source of truth for this package and ship with it:
 
 - [`ARCH-contract-write-wrapper.md`](./ARCH-contract-write-wrapper.md)
-- [`ARCH-web3-buttons.md`](./ARCH-web3-buttons.md)
+- [`ARCH-query-invalidation-pattern.md`](./ARCH-query-invalidation-pattern.md)
 
 ## Install
 

@@ -11,8 +11,6 @@ These docs are the single source of truth for this package and ship with it:
 - [`ARCH-api-response-wrapper.md`](./ARCH-api-response-wrapper.md)
 - [`ARCH-app-business-error.md`](./ARCH-app-business-error.md)
 - [`ARCH-backend-api-contract.md`](./ARCH-backend-api-contract.md)
-- [`ARCH-server-actions-pattern.md`](./ARCH-server-actions-pattern.md)
-- [`backend-app-extraction.md`](./backend-app-extraction.md)
 
 ## Install
 

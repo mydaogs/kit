@@ -8,7 +8,6 @@ The bigint JSON wire protocol, a bigint-safe stable hash, typed dynamic route pa
 
 These docs are the single source of truth for this package and ship with it:
 
-- [`ARCH-string-shorteners.md`](./ARCH-string-shorteners.md)
 - [`bigint-serialization-rules.md`](./bigint-serialization-rules.md)
 
 ## Install

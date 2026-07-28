@@ -8,9 +8,6 @@ Named cache tiers, query-function factories bound to a transport, and both halve
 
 These docs are the single source of truth for this package and ship with it:
 
-- [`ARCH-query-invalidation-pattern.md`](./ARCH-query-invalidation-pattern.md)
-- [`ARCH-tanstack-query-integration.md`](./ARCH-tanstack-query-integration.md)
-- [`pagination-rules.md`](./pagination-rules.md)
 
 ## Install
 

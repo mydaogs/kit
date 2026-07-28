@@ -1,79 +1,99 @@
-# [ARCH] - Backend API Contract
+# Versioned backend wire contract
 
 ## Description
 
-The standalone `apps/backend` service exposes a small versioned contract for health checks, auth, reads, writes, cron, and webhooks. The browser app talks to it directly over HTTP instead of routing browser reads through local API routes. The contract is intentionally focused on deployment boundaries and transport rules rather than DTO schemas for every endpoint
+A browser app talking to a separately deployed backend over HTTP carries two
+standing risks: the halves drifting apart across a split deploy, and a "public"
+endpoint quietly gaining credentials. This package addresses both with
+mechanisms rather than conventions
 
-## Routes
+## 1. Build-time version probe
 
-- `/health` - build and runtime health probe returning the backend contract version
-- `/auth/*` - auth library endpoints and plugins
-- `/data/*` - browser-facing read and write endpoints
-- `/public-data/*` - audited session-independent GET endpoints that may be shared by the CDN. Every base path must be registered in `PUBLIC_BACKEND_GET_PATHS` before `publicBackendFetch` will accept it
-- `/cron/*` - bearer-authenticated cron handlers
-- `/webhooks/*` - signed third-party and internal webhook handlers
-
-## The three contract mechanisms
-
-**1. Build-time version probe.** The consumer's fetch wrapper probes `/health` once during a production build and throws if `contractVersion` does not match its compiled-in constant. A split deploy fails the build instead of failing at runtime
+`createContractVerifier` probes a health endpoint **once during a production
+build** and throws `BackendContractMismatchError` if the reported
+`contractVersion` does not match the constant compiled into the consumer. A
+split deploy fails the build instead of failing in front of users
 
 ```ts
-if (body.contractVersion !== BACKEND_CONTRACT_VERSION) {
-  throw new BackendContractMismatchError(
-    BACKEND_CONTRACT_VERSION,
-    body.contractVersion,
-  );
-}
+const verifyContract = createContractVerifier({
+  expectedVersion: BACKEND_CONTRACT_VERSION,
+  expectedApp: "backend",
+  healthUrl: () => `${origin}/health`,
+  // Required, and build-time on purpose: running this per request makes a
+  // network probe a dependency of every request.
+  shouldVerify: () => process.env.NEXT_PHASE === "phase-production-build",
+});
 ```
 
-The probe tolerates a `503` when the body is valid and the version matches, so a degraded database does not block a deploy
+Two details that are easy to get wrong:
 
-**2. Path-to-response type map.** A single interface maps every route to its response type, so the fetch wrapper is checked end to end with no codegen and no RPC framework
+- **Success is memoized; failure is not.** Caching a rejected promise makes one
+  transient health blip permanent for the process lifetime, rejecting every
+  later request with a failure it cannot retry
+- **A `503` with a valid, version-matching body passes.** A degraded database
+  should not block the deploy of a correctly-versioned backend
+
+`isBackendHealthResponse` narrows the probe body; `BackendHealthResponse` types it
+
+## 2. Path-to-response type map
+
+The consumer declares one interface mapping route to response type, so the fetch
+wrapper is checked end to end with no codegen and no RPC framework:
 
 ```ts
-export interface BackendDataResponses {
+interface BackendDataResponses {
   "/data/getEntity": EntityDto;
   "/data/updateEntity": null;
-  "/data/getEntityList": EntityListPage;
 }
 ```
 
-**3. Public-path allowlist.** The credential-free lane is a literal `as const` tuple, and a template type derives the legal query-string forms:
+## 3. The public lane is enforced, not documented
+
+`createPublicPathValidator` builds a validator over an `as const` tuple of
+allowed base paths, and `PublicPathOf` derives the legal query-string forms:
 
 ```ts
-export const PUBLIC_BACKEND_GET_PATHS = [
-  "/public-data/getPublicProfileById",
-] as const;
-
-export type PublicBackendGetBasePath = (typeof PUBLIC_BACKEND_GET_PATHS)[number];
-export type PublicBackendGetPath =
-  | PublicBackendGetBasePath
-  | `${PublicBackendGetBasePath}?${string}`;
+const PUBLIC_GET_PATHS = ["/public-data/getProfileById"] as const;
 ```
 
-`publicBackendFetch` validates the base path at runtime and throws on any body, non-GET method, credential override, or custom header — so the lane cannot drift into preflighting or leaking cookies
+The public fetcher **throws at runtime** on a body, a non-GET method, a
+credential override, or a custom header. A lane that is only documented as
+credential-free drifts into sending cookies or triggering a preflight; one that
+throws cannot
+
+## 4. The credentialed fetcher pins the resolved origin
+
+`createBackendFetch` resolves every request against the configured origin and
+compares once, because `credentials: "include"` would otherwise forward the
+session cookie wherever a caller names
+
+Pinning only inputs that *look* absolute is insufficient. `//evil.example/x`,
+`\\evil.example/x` and `\/evil.example/x` all resolve to a foreign host while
+inheriting the scheme, because WHATWG URL normalizes backslashes for special
+schemes
+
+Both lanes validate the **resolved** URL. Validating a throwaway parse is
+unsound: `//evil.example/public-data/x` yields an allowlisted *pathname* under a
+dummy base and a foreign *host* under the real origin, returning attacker JSON
+as a trusted `ApiResponse`
 
 ## Response envelope
 
 ```ts
 type ApiResponse<TData = unknown> =
   | { success: true; data: TData; cacheTags?: string[] }
-  | {
-      success: false;
-      errorMessage: string;
-      errorCode?: BackendErrorCode;
-      errorParams?: Record<string, string | number>;
-    };
+  | { success: false; errorMessage: string; errorCode?: string; errorParams?: … };
 ```
 
-The backend sanitizes its error messages: only deliberate business/auth errors carry a descriptive message, everything unexpected collapses to a generic string server-side. That is what makes `errorMessage` safe to surface
+The backend must sanitize messages server-side: only deliberate business and
+auth errors carry descriptive text, everything unexpected collapses to a generic
+string. That is what makes `errorMessage` safe to return at all — and it is
+still not UI copy. See
+[`ARCH-api-response-wrapper.md`](./ARCH-api-response-wrapper.md)
 
 ## Contract hygiene
 
-The contract package must not import the database package. Enforce it as a package script so a stray import fails CI rather than review
-
-## Related files
-
-- `<monorepo>/packages/backend-contract/src/index.ts`
-- `<monorepo>/packages/backend-contract/src/errors.ts`
-- `<monorepo>/apps/app/src/lib/backend/client.ts`
+This package must not import a database client, a Redis client, or an indexer. It
+describes a wire format, and a wire format that drags in a persistence layer
+stops being consumable by the browser half. That is enforced as a package script
+(`check:contract-hygiene`) so a stray import fails CI rather than review

@@ -55,17 +55,16 @@ Package names (`@shared/ui`, `@shared/db`, `@shared/backend-contract`, `@shared/
 
 | Package | Docs it owns |
 | --- | --- |
-| [`@mydaogs/core`](https://www.npmjs.com/package/@mydaogs/core) | bigint serialization rules, string shorteners |
-| [`@mydaogs/contract`](https://www.npmjs.com/package/@mydaogs/contract) | backend API contract, response wrapper, business error, server actions, backend extraction |
-| [`@mydaogs/cache-handler`](https://www.npmjs.com/package/@mydaogs/cache-handler) | distributed cache handler decision, React cache pattern |
-| [`@mydaogs/query`](https://www.npmjs.com/package/@mydaogs/query) | query integration, invalidation, error boundary, pagination rules |
+| [`@mydaogs/core`](https://www.npmjs.com/package/@mydaogs/core) | bigint serialization rules |
+| [`@mydaogs/contract`](https://www.npmjs.com/package/@mydaogs/contract) | backend API contract, response envelope, business errors |
+| [`@mydaogs/cache-handler`](https://www.npmjs.com/package/@mydaogs/cache-handler) | distributed cache handler decision |
 | [`@mydaogs/query-client`](https://www.npmjs.com/package/@mydaogs/query-client) | identity-scoped cache reset hook |
-| [`@mydaogs/web3`](https://www.npmjs.com/package/@mydaogs/web3) | wagmi integration, network config, env config split |
+| [`@mydaogs/web3`](https://www.npmjs.com/package/@mydaogs/web3) | network config, env config split |
 | [`@mydaogs/web3-tx`](https://www.npmjs.com/package/@mydaogs/web3-tx) | durable pending-tx sync, pending transactions |
-| [`@mydaogs/web3-client`](https://www.npmjs.com/package/@mydaogs/web3-client) | contract write wrapper, web3 buttons |
-| [`@mydaogs/indexer`](https://www.npmjs.com/package/@mydaogs/indexer) | event processing pipeline, contract lifecycle rules, database per environment |
+| [`@mydaogs/web3-client`](https://www.npmjs.com/package/@mydaogs/web3-client) | contract write wrapper, query invalidation |
+| [`@mydaogs/indexer`](https://www.npmjs.com/package/@mydaogs/indexer) | event processing pipeline |
 
-If a doc describes one package's behaviour, it belongs in that package. This package is for what does not fit that test
+If a doc describes one package's behaviour, it belongs in that package and is enforced there by `check:doc-ownership`. This package is for what does not fit that test: patterns a consuming app implements, which name app directories and framework conventions by necessity
 
 ## Recommended reading order
 

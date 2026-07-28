@@ -27,13 +27,3 @@ Two separate identifiers, because they answer different questions:
 - **`actionKey`** — which control was the originator. Only the exact match restores its own spinner after a reload
 
 Scope conflict keys to the operation, not the entity alone: an in-flight terms update should block the edit affordance without colliding with unrelated publish/cancel operations on the same record. Conversely, reuse an existing conflict key when two operations genuinely contend for the same onchain position, so they conflict automatically without a new key
-
-## Related files
-
-- `<monorepo>/apps/app/src/lib/utils/optimisticTxSyncStorage.ts`
-- `<monorepo>/apps/app/src/lib/hooks/usePendingTxScope.ts`
-- `<monorepo>/apps/app/src/lib/hooks/txSyncEntityTypes.ts`
-- `<monorepo>/apps/app/src/lib/hooks/useAppWriteContract.ts`
-- `<monorepo>/apps/app/src/lib/utils/pendingTransactionToast.ts`
-- `<monorepo>/apps/app/src/components/PendingTransactionsWatcher/PendingTransactionsWatcher.tsx`
-- `<monorepo>/apps/app/src/components/PendingTxBadge/PendingTxBadge.tsx`

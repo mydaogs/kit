@@ -24,10 +24,3 @@ Pending onchain transactions share the unified `tx_sync` store, so toasts, recei
 ## Why per-hash keys
 
 Whole-object read-modify-write cannot safely merge simultaneous completions from different browser tabs. One key per hash means each mutation touches only its own record
-
-## Related files
-
-- `<monorepo>/apps/app/src/lib/hooks/useAppWriteContract.ts`
-- `<monorepo>/apps/app/src/lib/utils/pendingTransactionToast.ts`
-- `<monorepo>/apps/app/src/lib/utils/optimisticTxSyncStorage.ts`
-- `<monorepo>/apps/app/src/components/PendingTransactionsWatcher/PendingTransactionsWatcher.tsx`

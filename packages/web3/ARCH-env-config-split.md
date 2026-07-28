@@ -1,17 +1,19 @@
-# [ARCH] - Env Config Split
+# Env config split
 
 ## Description
 
-Client-safe env vars and server-only env vars are separated and validated with Zod in both the browser-facing app and the backend. Client config is an explicit allowlist of `NEXT_PUBLIC_*` keys so Next.js can statically inline values
+Client-safe and server-only environment variables are separated and validated with zod. `createEnvConfig` builds the parsers; the project supplies the schemas.
+
+The client half must be an explicit allowlist, because a bundler can only inline what it can see statically
 
 ## Behavior
 
-- `getEnvConfigClient()` parses a static allowlist of client vars
-- `getEnvConfigServer()` parses all server vars
-- Missing or invalid vars throw Zod errors early
-- The allowlist must be written as a literal object with explicit `process.env.NEXT_PUBLIC_X` member accesses. Next inlines these only on static member access — building the object dynamically produces `undefined` in the browser bundle
-- Exception — `NEXT_PUBLIC_DEPLOYMENT_BLOCK` is resolved environment-aware: required (a valid integer block number) on production testnet/mainnet, but optional on `development`/`test` where a missing/empty value defaults to `0n`. It is exposed as a `bigint` either way
-- `NEXT_PUBLIC_BACKEND_API_ORIGIN` is the single shared backend origin contract for browser-facing calls, server-side backend fetches, and backend auth base URL configuration
+- The client parser reads a static allowlist of public vars
+- The server parser reads everything
+- Missing or invalid vars throw at startup, not at first use
+- **The allowlist must be a literal object with explicit `process.env.X` member accesses.** Bundlers inline only on static member access; building the object dynamically yields `undefined` in the browser bundle, with no error to say so
+- `resolveDeploymentBlock` is environment-aware: a valid integer block number is required on production testnet/mainnet, optional on `development`/`test` where an empty value becomes `0n`. It is exposed as a `bigint` either way
+- One variable should be the single backend-origin contract, shared by browser calls, server-side fetches, and auth base-URL configuration. Splitting it across several is how the halves drift apart
 
 ## Environment-aware refinement
 
@@ -49,9 +51,3 @@ const clientEnvSchema = clientEnvObject.transform(resolveDeploymentBlock);
 ```
 
 A client-exposed RPC URL reaches the browser bundle, so lock it down with provider-side origin allowlists and treat it as public. Leaving it unset falls back to the chain's rate-limited public default
-
-## Related files
-
-- `<monorepo>/apps/app/src/lib/config/env.ts`
-- `<monorepo>/apps/backend/src/lib/config/env.ts`
-- `<monorepo>/apps/*/.env.example`

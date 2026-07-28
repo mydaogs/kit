@@ -1,32 +1,48 @@
-# [ARCH] - App Business Error
+# Business errors
 
 ## Description
 
-`AppBusinessError` is a custom error for expected business failures with an HTTP status code. Shared formatters normalize error messages and status codes across API routes, server actions, and UI toasts
+`AppBusinessError` is the error type for *expected* failures — a rejected
+business rule, not a bug. It carries an HTTP status code and, optionally, a
+machine-readable code and its interpolation params, so the same failure survives
+both the inline-result path and the throw/catch path without losing meaning
 
-## Behavior
+## Exports
 
-- `AppBusinessError` carries `statusCode`, and optionally `code` (`BackendErrorCode`) and `params` (`Record<string, string | number>`)
-- `formatErrorMessage` prioritizes `AppBusinessError` and `APIError`, then falls back to `error.message` or a generic message
-- `formatErrorStatusCode` maps `APIError` values and returns `statusCode` for `AppBusinessError`, defaults to 500
-- `actionErrorToThrowable(result)` converts a failure response back into an `AppBusinessError` with `code` and `params` preserved — use this instead of `new Error(result.errorMessage)` at throw sites in client hooks and components
+- `AppBusinessError` — carries `statusCode`, optional `code`, optional `params`
+- `APIError` — the transport-level counterpart
+- `formatErrorMessage` — prioritizes `AppBusinessError` and `APIError`, then
+  falls back to `error.message`, then to a generic message
+- `formatErrorStatusCode` — maps `APIError` values, returns `statusCode` for
+  `AppBusinessError`, defaults to 500
+- `actionErrorToThrowable(result)` — turns a failure envelope back into an
+  `AppBusinessError` with `code` and `params` intact
+- `setGenericErrorMessage` — sets the fallback string for failures that carry
+  nothing more specific
 
-## Error code resolution
+## Why actionErrorToThrowable exists
 
-A `backendErrorMessages.ts` map covers **every** `BackendErrorCode` with a translation key. The map is exhaustive (`satisfies Record<BackendErrorCode, string>`), so adding a catalog code without a key fails `check-types` — that is the guarantee that raw English never reaches the UI for a coded error. User-facing codes map to bespoke strings; internal/indexer/onchain-parse codes map to one generic server-error string
+A client that receives a failure envelope and needs to throw must not write
+`new Error(result.errorMessage)`. That discards `code` and `params` and leaves
+the catch site with an unlocalizable English string it can only match on
 
-Resolvers (all scoped to the errors namespace):
+`actionErrorToThrowable` preserves them, so a `catch` block localizes from the
+same `code` an inline branch would have used. Throw-path and result-path
+rendering stay identical
 
-- `resolveBackendErrorMessage(t, code, params?)` — total over codes: a known code resolves to its translation, an unrecognized but present code (a newer backend mid rolling-deploy) resolves to the generic server error, and only an **absent** code returns `undefined` so the caller can supply its own fallback
-- `resolveActionErrorMessage(t, result)` — localizes a failure-shaped result; always returns a string. Prefer this over hand-writing `resolveBackendErrorMessage(...) ?? result.errorMessage`
-- `resolveThrownErrorMessage(t, error, fallback)` — localizes a caught error; reads `code`/`params` off an `AppBusinessError` (preserved by `actionErrorToThrowable`) so throw→catch paths localize the same as inline-result paths
+## The message is not the contract
 
-The backend `errorMessage` is diagnostic metadata and a last-resort fallback, not UI content
+`formatErrorMessage` produces diagnostic text. It is not UI copy — it is
+unlocalized, and its wording is free to change. Client code branches on `code`
 
-At every display boundary, action-result branches must use `resolveActionErrorMessage`; mutation `onError`, caught action errors, and query `error` display sites must use `resolveThrownErrorMessage(tErrors, error, localizedFallback)` so a coded backend error localizes instead of rendering raw English. Transport-only hooks may preserve and rethrow `AppBusinessError`, but UI code must not render its diagnostic `message` directly. Client-thrown form invariants are matched by `instanceof`, not by English message text
+Matching on message text is the failure mode this exists to prevent: it breaks
+on any rewording, and it cannot be type-checked. Client-thrown invariants should
+be matched with `instanceof`, not by comparing strings
 
-## Related files
+## What lives in the consuming app
 
-- `<monorepo>/apps/app/src/lib/utils/errorUtils.ts`
-- `<monorepo>/apps/app/src/lib/errors/backendErrorMessages.ts`
-- `<monorepo>/packages/backend-contract/src/errors.ts`
+The project owns its error-code union, the map from code to translation key, and
+the resolvers that turn a code into localized copy. Making that map exhaustive
+over the code union — so adding a code without a translation is a type error —
+is the mechanism that keeps raw English out of the UI, and it belongs where the
+codes and the translations are

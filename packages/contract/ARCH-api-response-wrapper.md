@@ -1,44 +1,62 @@
-# [ARCH] - API Response Wrapper
+# Action and API response envelope
 
 ## Description
 
-Standardized helpers for backend API routes and server actions to return consistent success and error shapes, with status code mapping and shared error formatting
+One envelope shape for every backend response and every server action result, so
+a caller branches on `success` rather than learning each endpoint's own shape
 
-## Behavior
-
-- `createApiResponse` returns a `NextResponse` for backend API routes
-- `createActionResponse` returns a plain object for server actions
-- Response shape is `{ success: true, data }` or `{ success: false, errorMessage, errorCode?, errorParams? }`
-- `errorCode` is a `BackendErrorCode` from `@shared/backend-contract`; `errorParams` carries interpolation values for parameterized messages (e.g. `{ max: 500 }` for a length-limit code)
-- Uses `formatErrorMessage` and `formatErrorStatusCode` for errors, supports `APIError` and `AppBusinessError`
-- `createActionResponse` extracts `code` and `params` from `AppBusinessError` when building the failure shape, so client code can check `result.errorCode` instead of string-matching `result.errorMessage`
-- API responses serialize `bigint` values through the tagged `bigIntJson` wrapper so route payloads can safely cross JSON boundaries without flattening types to strings
-- `createApiResponse` accepts optional response headers, normalizes any `HeadersInit` shape, and always locks the JSON content type after caller headers are merged
-- `publicCacheControl` is an allow-list helper for audited public GET routes; it emits `public, max-age=0, s-maxage=<revalidate>, stale-while-revalidate=<expire - revalidate>`
-- Public `Cache-Control` applies to downstream shared caches and is outside the Next data-cache invalidation graph: `revalidateTag()` and `updateTag()` do not purge CDN-cached API responses, so each `s-maxage` must match acceptable edge staleness rather than the server `cacheLife` profile
-
-## Overload shape
-
-Function overloads keep the return type exact at each call site:
+## The shape
 
 ```ts
-export function createActionResponse(): ActionResponseSuccessWithoutData;
-export function createActionResponse<TData>(
-  props: { data: TData },
-): ActionResponseSuccessWithData<TData>;
-export function createActionResponse(
-  props: { error: unknown },
-): ActionResponseFail;
+{ success: true,  data }
+{ success: false, errorMessage, errorCode?, errorParams? }
 ```
 
-## Related files
+`ApiResponse` types the HTTP side; `ActionResponse` and its
+`ActionResponseSuccessWithData` / `ActionResponseSuccessWithoutData` /
+`ActionResponseFail` members type the server-action side
 
-- `<monorepo>/apps/backend/src/lib/utils/createApiResponse.ts`
-- `<monorepo>/apps/app/src/lib/utils/createActionResponse.ts`
-- `<monorepo>/apps/app/src/lib/utils/bigIntJson.ts`
-- `<monorepo>/apps/*/src/lib/utils/errorUtils.ts`
+## createActionResponse
 
-## Usage
+Overloaded so the return type is exact at each call site rather than a union the
+caller has to narrow:
 
-- API routes under `<monorepo>/apps/backend/src/app`
-- Server actions under `<monorepo>/apps/app/src/actions`
+```ts
+createActionResponse(): ActionResponseSuccessWithoutData;
+createActionResponse<TData>({ data: TData }): ActionResponseSuccessWithData<TData>;
+createActionResponse({ error: unknown }): ActionResponseFail;
+```
+
+On the failure branch it extracts `code` and `params` from an
+`AppBusinessError`, so callers check `result.errorCode` instead of
+string-matching `result.errorMessage`. See
+[`ARCH-app-business-error.md`](./ARCH-app-business-error.md)
+
+`createActionResponseFactory` binds a project's own error-code union to that
+signature, so `errorCode` is typed rather than a bare `string`
+
+## errorCode is the contract; errorMessage is not
+
+`errorMessage` is diagnostic metadata and a last-resort fallback. It is not UI
+content and must not be rendered as-is — it is unlocalized and its wording is
+not stable across versions. `errorCode` plus `errorParams` is what a client
+branches on and localizes
+
+`errorParams` carries interpolation values for parameterized codes, so a message
+like a length limit can render its bound without the backend formatting prose
+
+## bigint payloads
+
+This package does not serialize. A response containing `bigint` must be produced
+and consumed through the tagged wrapper in
+[`@mydaogs/core`](https://www.npmjs.com/package/@mydaogs/core) —
+`bigIntStringify` and `bigIntParse`. Native `JSON.stringify` throws on a bigint,
+and native `JSON.parse` yields wrapper objects that later `BigInt(...)` calls
+reject
+
+## What lives in the consuming app
+
+The HTTP-layer wrapper that turns this envelope into a framework `Response`,
+public `Cache-Control` policy for audited GET routes, and the localization of
+`errorCode` into user-facing strings. This package defines the shape and the
+error semantics, not the transport or the copy

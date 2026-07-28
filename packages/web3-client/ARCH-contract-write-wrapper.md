@@ -33,11 +33,3 @@ Pass `successMessage: string` to show a domain-specific toast on confirmation in
 ## syncTxBeforeInvalidate and onTxSynced props
 
 Pass `syncTxBeforeInvalidate: true` on any write that touches backend-projected data (indexer-sourced queries). The wrapper replays the tx hash into the backend with an elapsed-time retry budget (capped exponential backoff, final attempt guaranteed at the deadline) before invalidating client queries. If the backend or refetch path fails, the caller dismisses the reconciliation toast, shows the refresh warning, suppresses success, and **retains** the pending record. A 401 pauses it and refreshes session authority without consuming a retry; retryable sync/refetch failures cap at a small number of outer attempts; other failures become terminal warnings. Only `syncTxBeforeInvalidate` is persisted; after a page refresh the recovery watcher runs sync and invalidation from the durable pending record
-
-## Related files
-
-- `<monorepo>/apps/app/src/lib/hooks/useAppWriteContract.ts`
-- `<monorepo>/apps/app/src/lib/hooks/useTxReceiptReconciliation.ts`
-- `<monorepo>/apps/app/src/lib/utils/pendingTransactionToast.ts`
-- `<monorepo>/apps/app/src/lib/errors/contractErrorMessages.ts`
-- `<monorepo>/apps/app/src/lib/web3/getExplorerTxUrl.ts`

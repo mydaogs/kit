@@ -33,9 +33,3 @@ const { writeContract } = useAppWriteContract({
 ```typescript
 await queryClient.invalidateQueries({ queryKey: [SESSION_QUERY_KEY] });
 ```
-
-## Related files
-
-- `<monorepo>/apps/app/src/lib/hooks/useAppWriteContract.ts`
-- `<monorepo>/apps/app/src/lib/hooks/useTxReceiptReconciliation.ts`
-- `<monorepo>/apps/app/src/lib/hooks/keys.ts`

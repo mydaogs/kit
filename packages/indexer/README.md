@@ -9,8 +9,6 @@ Storage-agnostic exactly-once projection: event hashing, an atomic-claim ledger 
 These docs are the single source of truth for this package and ship with it:
 
 - [`ARCH-event-processing-pipeline.md`](./ARCH-event-processing-pipeline.md)
-- [`contract-lifecycle-rules.md`](./contract-lifecycle-rules.md)
-- [`database-per-environment.md`](./database-per-environment.md)
 
 ## Install
 

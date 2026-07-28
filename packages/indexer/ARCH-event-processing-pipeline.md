@@ -1,53 +1,98 @@
-# [ARCH] - Event Processing Pipeline
+# Event processing pipeline
 
 ## Description
 
-Indexer events are processed with atomic deduplication, bounded retries, and ordering guards to ensure each log is applied once and in order
+Primitives for applying an onchain log exactly once, in order, with a failure
+taxonomy that stays operable. The package is storage-agnostic: it defines the
+`EventLedger` interface and the decision logic, and the host supplies the
+database
 
-## Behavior
+## Identity and ordering
 
-- Event hash uses `keccak256(txHash + logIndex + chainId)`
-- A `ProcessedBlockchainEvent` ledger claims events atomically and allows retries only when `nextRetryAt` is due
-- Retries use exponential backoff with a max attempt cap
-- Stale `processing` rows can be reclaimed after a claim timeout so crashed handlers can resume without manual cleanup
-- Handlers guard against out-of-order updates using `blockNumber` and `logIndex` watermarks
-- Status updates fail fast when the block timestamp cannot be resolved so the event is retried instead of using a server-time fallback
-- Block timestamp resolution uses an in-memory positive cache, in-flight request deduplication, and a short negative cache TTL to reduce repeated RPC calls during transient provider failures
-- A status-transition handler validates the transition against a contract-authoritative forward map atomically inside the database transaction using the transactionally-read prior status (not a stale pre-transaction snapshot). An exact-status compare-and-set guards the write so all prior-status-dependent side effects are always consistent with the committed status, even under concurrent projection writes
-- An invalid transition (missing intermediate event, processing race, stale map after a contract upgrade) throws a dedicated `StatusProjectionGapError` and is classified as `failed` with a `STATUS_GAP: <prior>→<next>` prefix and an unbounded, capped retry — it never dead-letters and is never quarantined. The cron reconciler surfaces unresolved gaps as a counter
-- All state changes for one event apply in one database transaction to prevent partial-write deadlocks on replay
-- A `count === 0` compare-and-set miss is classified post-transaction via a fresh read: if the event is no longer newer it is a superseded no-op; if still newer it throws a projection-gap error. Transactions read a consistent snapshot, so re-reading inside the transaction would mis-classify concurrent writes
-- Decoded `eventArgs` are persisted for downstream history reads. Serialization uses the `bigIntJson` wrapper protocol — see `@mydaogs/core` → `bigint-serialization-rules.md`, including defensive coercion for plain-string rows
-- Events in the `*_IGNORED_EVENT_NAMES` sets from the shared event registry decode successfully but deliberately carry no projection: the dispatcher audits them as `skipped` with decoded args preserved instead of routing them into the failed/retry path; logs whose signature is absent from the ABI entirely are likewise audited as `skipped`
-- `cacheTagsToInvalidate` and the final `processed` audit state are persisted in one write after a handler succeeds, so there is no partial-state window and no second database round trip
-- `cacheTagsToInvalidate` stores the replay-time cache invalidation tags so skipped replays can re-emit the same cache signals without re-running handler logic. A receipt-scoped `AsyncLocalStorage` collector deduplicates handler tag requests and publishes them once before the transaction lease finalizes; a publish failure leaves the ledger failed so the next replay re-emits the persisted manifests
-- A `sourceEventHash` on generated records dedupes onchain-driven side effects across retries
-- Best-effort projection-health metadata (`outcomeCode`, `entityType`, `entityId`) is written only at classified terminal/idempotent dispositions — never for plain success or in-progress retries, which are derived at read time from `status`/`nextRetryAt`. Entity fields are populated once in the dispatcher from args it already decodes; individual handlers never set them
-- The atomic claim accepts an opt-in `allowTerminal` flag (replay-path only) that additionally claims a general dead letter via the same compare-and-set update the normal retry lane uses. Quarantines, orphans, anomalies, and status gaps stay unreachable through this path regardless of the flag — only the generic dead-letter class opens
+- `computeEventHash` derives an event's identity from `keccak256(txHash +
+  logIndex + chainId)`. The chain id is part of it deliberately — the same
+  transaction hash on two chains is two different events
+- `isNewerChainEvent` compares `(blockNumber, logIndex)` watermarks so a
+  re-delivered or out-of-order log cannot overwrite a newer projection
 
-## Terminal failure taxonomy
+## The claim contract
 
-Distinguishing failure classes is what makes an indexer operable. Retrying everything hides bugs; dead-lettering everything loses recoverable work
+`EventLedger` requires an **atomic** claim: a compare-and-set that takes an
+event from unclaimed to processing in one operation. Retries become eligible
+only when `nextRetryAt` is due, and a stale `processing` row must be reclaimable
+after a timeout so a crashed handler resumes without manual cleanup
+
+`createEventProcessor` drives that contract. A `ClaimResult` reports whether
+this caller owns the event; `ProcessorContext` carries what a handler needs;
+`ProcessResult` reports the disposition
+
+Apply all state changes for one event in a single transaction. Partial writes on
+a replay path are how deadlocks and half-projected entities happen
+
+## Backoff
+
+`computeRetryAt` implements exponential backoff with a cap, for transient
+failures. `computeStatusGapRetryAt` is separate and deliberately different — see
+below
+
+## Failure taxonomy
+
+Distinguishing failure classes is what makes an indexer operable. Retrying
+everything hides bugs; dead-lettering everything loses recoverable work.
+`classifyProjectionFailure` maps a thrown error to `PROJECTION_OUTCOME`, and
+`ClassifiedFailure` / `ProjectionHealthClass` carry the result
 
 | Class | Retry | Meaning |
 | --- | --- | --- |
-| retryable failure | backoff, capped attempts | transient — RPC, network, lock contention |
-| `STATUS_GAP` | unbounded, capped interval | a missing intermediate event; resolvable once the gap fills |
-| dead letter | none (replayable by admin) | handler bug or permanently bad input |
-| quarantine | never | deterministic provenance violation — the event fails an invariant that no replay can satisfy |
-| orphan | never | the event references an offchain record that no longer exists |
-| anomaly | never | the event contradicts offchain state in a way that needs human classification |
+| retryable | backoff, capped attempts | transient — RPC, network, lock contention |
+| status gap | unbounded, capped interval | a missing intermediate event; resolves when it lands |
+| dead letter | none, replayable | handler bug or permanently bad input |
+| quarantine | never | deterministic provenance violation no replay can satisfy |
+| orphan | one retry | references an offchain record that is not there |
+| anomaly | never | contradicts offchain state; needs human classification |
 | idempotent no-op | n/a | already applied; recorded for audit |
 
-Surface these as counters in a reconciler and an admin console, with signed and audited replay restricted to the classes that are genuinely replayable
+Two of these are load-bearing and easy to get wrong:
 
-## Related files
+- **Status gaps never dead-letter.** `StatusProjectionGapError` means an
+  intermediate event has not arrived yet. It resolves on its own once the gap
+  fills, so an attempt cap would strand recoverable work. It retries unboundedly
+  at a capped interval instead
+- **`OrphanedProjectionError` gets exactly one retry.** Its dominant cause is a
+  webhook arriving before the offchain row commits, which self-heals within a
+  backoff cycle. A genuinely missing referent still terminates on the second
+  attempt
 
-- `<monorepo>/apps/backend/src/lib/web3/indexer/processKnownBlockchainLog.ts`
-- `<monorepo>/apps/backend/src/lib/web3/indexer/processedBlockchainEventAudit.ts`
-- `<monorepo>/apps/backend/src/lib/web3/indexer/eventTagManifest.ts`
-- `<monorepo>/apps/backend/src/lib/web3/indexer/eventHash.ts`
-- `<monorepo>/apps/backend/src/lib/web3/indexer/isNewerChainEvent.ts`
-- `<monorepo>/apps/backend/src/lib/web3/indexer/statusProjectionGapError.ts`
-- `<monorepo>/apps/backend/src/lib/web3/indexer/cronReconciler.ts`
-- `<monorepo>/packages/web3-events/index.d.ts`
+`QuarantineProjectionError` and `ProjectionAnomalyError` are terminal by
+construction — they describe states that no replay can fix, so making them
+retryable only burns attempts
+
+## Status transitions
+
+Validate a transition against a forward map **inside** the transaction, using
+the transactionally-read prior status rather than a pre-transaction snapshot,
+and guard the write with an exact-status compare-and-set. Otherwise
+prior-status-dependent side effects can disagree with the committed status under
+concurrent writes
+
+Classify a compare-and-set miss (`count === 0`) *after* the transaction, via a
+fresh read: if the event is no longer newer it was a superseded no-op; if it is
+still newer, it is a projection gap. Re-reading inside the transaction
+mis-classifies concurrent writes, because the transaction sees a consistent
+snapshot
+
+## Persisted args
+
+Decoded event args must round-trip through the tagged bigint protocol in
+[`@mydaogs/core`](https://www.npmjs.com/package/@mydaogs/core) — chain args are
+full of bigints and native `JSON.stringify` throws on them. Coerce defensively
+on read: a persisted row may carry a plain decimal string, and a strict
+`typeof === "bigint"` check would silently drop it
+
+## What the host owns
+
+The ledger implementation, the ABI and which events are deliberately ignored,
+the concrete projections, and any reconciler or admin replay console. This
+package supplies identity, ordering, claim semantics, backoff, and
+classification — the parts that are the same in every indexer and wrong in
+subtly different ways each time they are rewritten

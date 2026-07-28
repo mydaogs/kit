@@ -8,7 +8,6 @@ Routes tag-invalidation timestamps through a shared Redis store so peer deployme
 
 These docs are the single source of truth for this package and ship with it:
 
-- [`ARCH-react-cache-pattern.md`](./ARCH-react-cache-pattern.md)
 - [`cache-handlers-shared-store.md`](./cache-handlers-shared-store.md)
 
 ## Install
