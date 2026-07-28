@@ -48,7 +48,8 @@ needs reaches the production bundle unless listed explicitly:
 
 ```js
 outputFileTracingIncludes: {
-  "/**/*": [
+  // "/**", not "/**/*" or "/*"
+  "/**": [
     "./cache-handlers/**/*",
     "./node_modules/@mydaogs/cache-handler/dist/**",
     "./node_modules/@mydaogs/kv/dist/**",
@@ -59,8 +60,14 @@ outputFileTracingIncludes: {
 },
 ```
 
-Three things about these globs are worth stating, because each has broken a real
-deployment:
+The selector matters as much as the values. Next matches it with
+`picomatch({ dot: true, contains: true })`, where `"/**/*"` matches neither `/`
+nor `/about`, and `"/*"` still misses `/`. Only `"/**"` covers root,
+single-segment and nested routes alike, and a route the selector does not match
+is a server trace shipped without any of these files
+
+Three things about the value globs are worth stating too, because each has
+broken a real deployment:
 
 - **A glob that matches nothing is silent.** It does not warn or fail the build.
   `./node_modules/@upstash/redis/**` resolves only in an app that declares that

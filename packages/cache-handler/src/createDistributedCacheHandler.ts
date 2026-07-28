@@ -40,11 +40,11 @@ interface CacheHandler {
 
 interface CreateDistributedCacheHandlerOptions {
   appName: string;
-  // KV client (Upstash Redis-compatible) passed in by the host app's
-  // cache-handler shim. cache-handler does not import @mydaogs/kv directly
-  // so the precompiled runtime/*.mjs files have no bare workspace
-  // specifiers, which reader apps rely on, since they load those
-  // files outside Next's transpile pipeline.
+  // KV client (Upstash Redis-compatible), supplied by the host app's shim.
+  // This package declares no Redis dependency of its own: Next loads a cache
+  // handler outside the app's module graph, so anything imported here has to
+  // resolve without the app's bundler, on whatever layout the host flattens
+  // to. Taking the client as a parameter removes that question entirely.
   kvClient: KvClient;
   prefix?: string;
   refreshThrottleMs?: number;
