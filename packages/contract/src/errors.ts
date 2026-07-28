@@ -54,11 +54,19 @@ export const setGenericErrorMessage = (message: string): void => {
  * Collapses anything unexpected to the generic string. Only deliberate
  * business and auth errors keep their message — that is what makes the
  * resulting `errorMessage` safe to put on the wire.
+ *
+ * Pass `genericMessage` to override the process-wide default for one call.
+ * A server handling several locales in one process must use this (or
+ * `createActionResponseFactory`) rather than the global setter, which has no
+ * per-request seam.
  */
-export const formatErrorMessage = (error: unknown): string =>
+export const formatErrorMessage = (
+  error: unknown,
+  genericMessage?: string,
+): string =>
   error instanceof AppBusinessError || error instanceof APIError
     ? error.message
-    : genericErrorMessage;
+    : (genericMessage ?? genericErrorMessage);
 
 export const formatErrorStatusCode = (error: unknown): number => {
   if (error instanceof APIError) {

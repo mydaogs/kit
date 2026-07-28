@@ -51,7 +51,10 @@ Most packages are factories rather than singletons, so a project supplies its ow
 // transport — one place owns the origin, the allowlist, and the version gate
 const verifyContract = createContractVerifier({
   expectedVersion: BACKEND_CONTRACT_VERSION,
+  expectedApp: "backend",
   healthUrl: () => `${origin}/health`,
+  // Required. This is a BUILD-time gate — running it at request time makes a
+  // network probe a dependency of every request.
   shouldVerify: () => process.env.NEXT_PHASE === "phase-production-build",
 });
 
@@ -81,6 +84,14 @@ export const useAppWriteContract = createUseAppWriteContract({
 });
 
 export const usePendingTxScope = createUsePendingTxScope(storage);
+
+// persisted query cache — BOTH halves of the identity defense are required
+const shouldDehydrateQuery = createShouldDehydrateQuery({
+  excludedKeyRoots: PROTECTED_FINANCIAL_KEYS.concat(IDENTITY_SENSITIVE_KEYS),
+  excludedExternalRoots: ["readContract"],
+});
+// plus: a persister `buster` bumped on any incompatible shape change, and one
+// authoritative fresh session fetch after restore. See the invariants below.
 ```
 
 ## Invariants worth preserving
@@ -95,9 +106,17 @@ These are the non-obvious properties. Changing them silently breaks correctness 
 - **Status gaps never dead-letter.** They resolve once the missing intermediate event lands; an attempt cap would strand a recoverable projection
 - **Cache-tag state is cleared wholesale when any tag is dropped.** Soft tags are passed at read time and not recorded on the entry, so dependents cannot be identified individually
 - **The public fetch lane is enforced at runtime**, not documented. It throws on bodies, non-GET methods, credential overrides, and custom headers, so it cannot drift into sending cookies or triggering a preflight
-- **The credentialed fetcher pins its origin.** An absolute URL to any other host is refused, because `credentials: "include"` would otherwise forward the session cookie wherever a caller names
+- **The credentialed fetcher pins the *resolved* origin.** Every request is resolved against the configured origin and compared once, because `credentials: "include"` would otherwise forward the session cookie wherever a caller names. Pinning only inputs that look absolute (`^https?://`) is insufficient: `//evil.example/x`, `\\evil.example/x` and `\/evil.example/x` all resolve to a foreign host while inheriting the scheme, since WHATWG URL normalizes backslashes for special schemes
 - **Storage keys are materialized before any entry is read.** `readEntry` purges invalid records, and `Storage.key(i)` is a live index — deleting mid-scan shifts later keys down and skips them, hiding a pending transaction from the watcher entirely
 - **External query roots are admitted by predicate, not by root name.** A root allowlist cannot express a partial carve-out, and a wallet library's `readContract` root covers both harmless chain reads and viewer-scoped financial ones
+- **`Object.freeze` does not protect a Set or Map.** Their contents live in internal slots, so a frozen empty collection is still mutable. The `Readonly*` types are the real protection; shared empty singletons are built fresh per call instead
+- **Query keys are hashed with `stableHash`, never `JSON.stringify`.** Wallet-library keys routinely carry bigints, and stringify throws on them — dedupe would fail before any invalidation ran, turning every confirmed transaction into a false refresh-warning. The same applies to persisting the durable record, which uses the tagged bigint protocol
+- **The identity defense has three parts, not one.** `useResetCacheOnIdentityChange` clears on an observed transition; `createShouldDehydrateQuery` bounds what reaches disk at all; a persister `buster` discards an incompatible shape. Shipping only the first leaves private payloads recoverable from `localStorage`. An anonymous *first* identity is treated as a transition, not a clean baseline, because that is what an expired session over a restored cache looks like
+- **The contract probe memoizes success only.** Caching a rejected promise makes one transient health-endpoint blip permanent for the process lifetime, rejecting every later request with a failure it cannot retry
+- **Both fetch lanes validate the resolved URL.** The public lane validating a throwaway parse is unsound: `//evil.example/public-data/x` yields an allowlisted *pathname* under a dummy base but a foreign *host* under the real origin, returning attacker JSON as a trusted `ApiResponse`
+- **The tx registry validates on write as well as read.** Persisting a record the reader will reject creates one that purges itself on first read; the submitting hook then reads the absence as "another tab settled it", so the toast never clears and `onSuccess` never fires
+- **A publish failure's tag manifest is readable back.** `markFailed` persists it and `getPendingCacheTags` returns it, because an idempotent handler requests no tags on replay — without the read path the manifest is unreachable and the invalidation is lost permanently
+- **`ORPHANED` gets exactly one retry.** Its dominant cause is a webhook arriving before the offchain row commits, which self-heals within a backoff cycle; a genuinely missing referent still terminates on the second attempt
 
 ## Verification
 
@@ -112,8 +131,8 @@ These are the non-obvious properties. Changing them silently breaks correctness 
 The CI guards are **not** part of `pnpm check`. They target a consuming repo and now exit non-zero when handed a path with nothing to scan, so running them against this workspace correctly fails:
 
 ```bash
-pnpm check:cache-handlers ../motherhunt-monorepo/apps
-pnpm check:bare-revalidate ../motherhunt-monorepo/apps/backend/src
+pnpm check:cache-handlers ../<monorepo>/apps
+pnpm check:bare-revalidate ../<monorepo>/apps/backend/src
 ```
 
 ## CI guards

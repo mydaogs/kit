@@ -1,6 +1,7 @@
 {
   "name": "@kit/query",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "description": "TanStack Query conventions: cache tiers, fetch factories, fail-closed identity-scoped cache reset",
   "sideEffects": false,

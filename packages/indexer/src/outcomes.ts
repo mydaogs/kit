@@ -16,7 +16,14 @@ export const PROJECTION_OUTCOME = {
   STATUS_GAP: "STATUS_GAP",
   /** Handler bug or permanently bad input. Replayable by an admin. */
   DEAD_LETTER: "DEAD_LETTER",
-  /** References an offchain record that no longer exists. Never retried. */
+  /**
+   * References an offchain record that is not present.
+   *
+   * Given ONE retry before going terminal: the dominant cause is a webhook
+   * delivered before the offchain row's transaction commits, which resolves
+   * itself within a backoff cycle. A genuinely orphaned event still terminates
+   * on the second attempt.
+   */
   ORPHANED: "ORPHANED",
   /**
    * Fails a deterministic provenance invariant that no replay can satisfy.
@@ -77,8 +84,12 @@ export class ProjectionAnomalyError extends Error {
 
 export interface ClassifiedFailure {
   outcomeCode: ProjectionOutcomeCode | null;
-  /** `null` means terminal — never retried. */
   retryable: boolean;
+  /**
+   * Attempts after which a retryable class becomes terminal. `undefined` means
+   * the ordinary backoff budget applies.
+   */
+  maxAttempts?: number;
   lastErrorPrefix: string;
 }
 
@@ -106,7 +117,10 @@ export function classifyProjectionFailure(error: unknown): ClassifiedFailure {
   if (error instanceof OrphanedProjectionError) {
     return {
       outcomeCode: PROJECTION_OUTCOME.ORPHANED,
-      retryable: false,
+      retryable: true,
+      // One cycle only — enough for a commit race to settle, not enough for a
+      // truly missing referent to retry forever.
+      maxAttempts: 1,
       lastErrorPrefix: "ORPHANED",
     };
   }

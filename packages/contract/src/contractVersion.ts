@@ -52,14 +52,24 @@ export function createContractVerifier(options: {
    * does not prove you reached the service you meant to reach.
    */
   expectedApp?: string;
-  /** Gate so the probe only runs during a production build. */
-  shouldVerify?: () => boolean;
+  /**
+   * Gate deciding when the probe runs. **Required** — it must not default to
+   * "always".
+   *
+   * This is a build-time deploy gate, so the correct value is a build-phase
+   * check. Left to run at request time it turns a network probe into a
+   * dependency of every request: see the memoization note below.
+   */
+  shouldVerify: () => boolean;
 }) {
   let verification: Promise<void> | null = null;
 
   return async function verifyContractOnce(): Promise<void> {
-    if (options.shouldVerify && !options.shouldVerify()) return;
+    if (!options.shouldVerify()) return;
 
+    // Memoize the SUCCESS only. Caching a rejected promise would make one
+    // transient health-endpoint blip permanent for the life of the process —
+    // every later request rejecting on a stale failure it cannot retry.
     verification ??= (async () => {
       const res = await fetch(options.healthUrl(), { cache: "no-store" });
 
@@ -91,6 +101,11 @@ export function createContractVerifier(options: {
       }
     })();
 
-    await verification;
+    try {
+      await verification;
+    } catch (error) {
+      verification = null;
+      throw error;
+    }
   };
 }

@@ -1,6 +1,7 @@
 {
   "name": "@kit/core",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "description": "Zero-dependency isomorphic primitives: bigint JSON wire protocol, typed route paths, type helpers",
   "sideEffects": false,

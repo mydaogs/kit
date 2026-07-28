@@ -1,6 +1,7 @@
 {
   "name": "@kit/cache-handler",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "description": "Distributed Next.js cache handler over a shared Redis tag store, plus a cross-app invalidation publisher",
   "sideEffects": false,

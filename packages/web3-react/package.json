@@ -1,6 +1,7 @@
 {
   "name": "@kit/web3-react",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "description": "Durable pending-transaction registry and contract-write wrapper with cross-tab ownership, phased toasts, and reconciliation",
   "sideEffects": false,

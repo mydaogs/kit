@@ -13,13 +13,19 @@ export interface IdentityScope {
  * different organization sees different data — an org switch must invalidate
  * private cache just as a sign-out does.
  */
+export const ANONYMOUS_IDENTITY = "anon";
+
 export function getIdentityScopeKey(scope: IdentityScope | null): string {
-  if (!scope?.userId) return "anon";
-  return [
+  if (!scope?.userId) return ANONYMOUS_IDENTITY;
+  // JSON, not a `:` join: an id containing the separator (a slug, an email,
+  // a composite key) would otherwise let two distinct identities collapse to
+  // the same string — `{a:b, c, d}` and `{a, b:c, d}` both yield "a:b:c:d".
+  // A fail-open collision inside a fail-closed component is not acceptable.
+  return JSON.stringify([
     scope.userId,
-    scope.organizationId ?? "no-org",
-    scope.memberId ?? "no-member",
-  ].join(":");
+    scope.organizationId ?? null,
+    scope.memberId ?? null,
+  ]);
 }
 
 export interface RemoveIdentityScopedQueriesOptions {

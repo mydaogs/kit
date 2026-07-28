@@ -1,3 +1,4 @@
+import { bigIntParse, bigIntStringify } from "@kit/core";
 import type { TxSyncVocabulary } from "./vocabulary";
 
 export type TxSyncPhase = "pending" | "reconciling" | "warning";
@@ -194,13 +195,20 @@ export function createTxSyncStorage(params: {
     try {
       const raw = window.localStorage.getItem(entryKey(txHash));
       if (!raw) return null;
-      const parsed = normalizeEntry(JSON.parse(raw));
+      const parsed = normalizeEntry(bigIntParse(raw));
       if (!parsed) {
         window.localStorage.removeItem(entryKey(txHash));
         return null;
       }
       return parsed;
     } catch {
+      // Unparseable JSON is also unrecoverable. Purge it, or it is re-read and
+      // re-thrown on every single snapshot for the next seven days.
+      try {
+        window.localStorage.removeItem(entryKey(txHash));
+      } catch {
+        /* storage unavailable */
+      }
       return null;
     }
   };
@@ -241,7 +249,10 @@ export function createTxSyncStorage(params: {
   const persistEntry = (entry: TxSyncEntry): boolean => {
     if (!hasStorage()) return false;
     try {
-      window.localStorage.setItem(entryKey(entry.hash), JSON.stringify(entry));
+      // bigIntStringify, not JSON.stringify: queryKeysToInvalidate may carry
+      // bigints, and raw stringify throws on them — the record would silently
+      // never persist, disabling retry, cross-tab recovery and reload recovery.
+      window.localStorage.setItem(entryKey(entry.hash), bigIntStringify(entry));
       return true;
     } catch {
       return false;
@@ -381,10 +392,24 @@ export function createTxSyncStorage(params: {
 
   // ── Mutations ─────────────────────────────────────────────────────────
 
-  const saveEntry = (
-    entry: Omit<TxSyncEntry, "version">,
-  ): boolean => {
-    const persisted = persistEntry({ ...entry, version: ENTRY_VERSION });
+  const saveEntry = (entry: Omit<TxSyncEntry, "version">): boolean => {
+    const candidate = { ...entry, version: ENTRY_VERSION } as TxSyncEntry;
+
+    // Validate on write, exactly as the read path does. Persisting an entry the
+    // reader will reject creates a record that purges itself on first read; the
+    // submitting hook's takeover guard sees the absence and concludes another
+    // tab settled it, so the toast never clears and `onSuccess` never fires.
+    if (!normalizeEntry(candidate)) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error(
+          "createTxSyncStorage.saveEntry: entry rejected by its own validator — check that every entityType/actionKey/conflictKey is registered in the vocabulary",
+          candidate,
+        );
+      }
+      return false;
+    }
+
+    const persisted = persistEntry(candidate);
     emitChange();
     return persisted;
   };

@@ -19,7 +19,10 @@ export const redact = <TVisible extends object>(
   visible: TVisible,
   isVisible: boolean,
 ): Redactable<TVisible> =>
-  isVisible ? { visibility: "public", ...visible } : HIDDEN;
+  // Discriminant spread LAST. With it first, a payload carrying its own
+  // `visibility` field silently overwrites the tag, and `isVisible()` then
+  // misclassifies the record in whichever direction the data happens to say.
+  isVisible ? { ...visible, visibility: "public" } : HIDDEN;
 
 export const isVisible = <TVisible extends object>(
   value: Redactable<TVisible>,

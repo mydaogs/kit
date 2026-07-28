@@ -65,9 +65,23 @@ export interface EventLedger {
      * re-emit on replay. Handlers are idempotent, so the replay's second run
      * commonly short-circuits ("already applied") and requests no tags at all —
      * at which point the only surviving copy of the manifest is this one.
+     *
+     * Required, not optional: an implementation that quietly drops it would
+     * still typecheck while losing the invalidation permanently.
      */
-    cacheTagsToInvalidate?: string[];
+    cacheTagsToInvalidate: string[];
   }): Promise<void>;
+
+  /**
+   * Tags persisted by a previous failed attempt, if any.
+   *
+   * Without this the manifest written by `markFailed` is unreachable and the
+   * documented recovery does not exist: on replay the idempotent handler
+   * short-circuits and requests no tags, publish is skipped, and the success
+   * write overwrites the only surviving copy with an empty list. Peer
+   * deployments then serve stale data permanently.
+   */
+  getPendingCacheTags(eventHash: `0x${string}`): Promise<string[]>;
 
   /**
    * Attempts made so far, used to compute the next backoff interval.
@@ -191,6 +205,12 @@ export function createEventProcessor<TLog extends EventLog>(
     try {
       await handler(log, ctx);
 
+      // Union this run's tags with any carried over from a previous attempt
+      // whose publish failed. An idempotent handler commonly requests nothing
+      // on replay, so the carried manifest is the only surviving copy.
+      const carried = await ledger.getPendingCacheTags(eventHash);
+      for (const tag of carried) requestedTags.add(tag);
+
       const tags = [...requestedTags];
       // Publish BEFORE finalizing. A publish failure must not mark the event
       // processed, or the invalidation is lost with nothing left to retry —
@@ -227,14 +247,23 @@ export function createEventProcessor<TLog extends EventLog>(
       const nextRetryAt =
         classified.outcomeCode === PROJECTION_OUTCOME.STATUS_GAP
           ? computeStatusGapRetryAt(attemptCount, backoff)
-          : computeRetryAt(attemptCount, backoff);
+          : computeRetryAt(attemptCount, {
+              ...backoff,
+              ...(classified.maxAttempts !== undefined
+                ? { maxAttempts: classified.maxAttempts }
+                : {}),
+            });
 
       await ledger.markFailed({
         eventHash,
         lastError: `${classified.lastErrorPrefix} ${message}`.trim(),
         nextRetryAt,
         outcomeCode:
-          nextRetryAt === null ? PROJECTION_OUTCOME.DEAD_LETTER : classified.outcomeCode,
+          nextRetryAt === null
+            ? // A class with its own attempt cap keeps its identity when it
+              // terminates; only an unclassified failure becomes a dead letter.
+              (classified.outcomeCode ?? PROJECTION_OUTCOME.DEAD_LETTER)
+            : classified.outcomeCode,
         // Carries a manifest requested before the throw, so a publish failure
         // can be re-emitted on replay even if the idempotent second run
         // requests nothing.

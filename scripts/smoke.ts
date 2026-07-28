@@ -1,5 +1,17 @@
 import assert from "node:assert/strict";
-import { bigIntStringify, bigIntParse, toBigInt, buildDynamicRoutePath, truncateString } from "@kit/core";
+import {
+  bigIntStringify,
+  bigIntParse,
+  toBigInt,
+  buildDynamicRoutePath,
+  truncateString,
+  stableHash,
+} from "@kit/core";
+import {
+  CACHE_TIMES,
+  getIdentityScopeKey,
+  createShouldDehydrateQuery,
+} from "@kit/query";
 import {
   createActionResponse,
   AppBusinessError,
@@ -9,6 +21,7 @@ import {
   createBackendFetch,
   isBackendHealthResponse,
   setGenericErrorMessage,
+  createActionResponseFactory,
 } from "@kit/contract";
 import { computeRetryAt, computeStatusGapRetryAt, isNewerChainEvent, classifyProjectionFailure, StatusProjectionGapError, QuarantineProjectionError, computeEventHash } from "@kit/indexer";
 import { getSyncRecoveryAction } from "../packages/web3-react/src/reconcile.ts";
@@ -46,9 +59,21 @@ assert.equal(isVisible(redact({ id: "org1", name: "Acme" }, true)), true);
 
 // public path lane rejects anything not allowlisted
 const validate = createPublicPathValidator(["/public-data/getThing"] as const);
-validate("/public-data/getThing?id=1");
-assert.throws(() => validate("/data/getSecret"));
-assert.throws(() => validate("https://evil.example/x"));
+const publicOrigin = "https://api.example.com";
+validate("/public-data/getThing?id=1", publicOrigin);
+assert.throws(() => validate("/data/getSecret", publicOrigin));
+assert.throws(() => validate("https://evil.example/x", publicOrigin));
+// SSRF: these resolve to an allowlisted PATH under a dummy base but a foreign
+// HOST under the real origin, and would return attacker JSON as a trusted
+// ApiResponse.
+assert.throws(
+  () => validate("//evil.example/public-data/getThing", publicOrigin),
+  /Refusing a public backend request/,
+);
+assert.throws(
+  () => validate("\\\\evil.example/public-data/getThing", publicOrigin),
+  /Refusing a public backend request/,
+);
 
 // backoff: normal lane dead-letters, status gap never does
 assert.notEqual(computeRetryAt(0), null);
@@ -106,16 +131,29 @@ assert.equal(
   "/u/a%2F..%2Fadmin",
 );
 
-// credentialed fetch must refuse a foreign absolute URL
+// credentialed fetch must refuse every form that resolves off-origin.
+// Pinning only `^https?://` inputs leaves scheme-relative forms open: WHATWG
+// URL normalizes backslashes for special schemes, so all three below swap the
+// host while inheriting the scheme.
 {
   const { backendFetch } = createBackendFetch({
     getOrigin: () => "https://api.example.com",
     publicPaths: ["/public-data/x"] as const,
   });
-  await assert.rejects(
-    () => backendFetch("https://evil.example/steal"),
-    /Refusing to send a credentialed request/,
-  );
+
+  const offOrigin = [
+    "https://evil.example/steal",
+    "//evil.example/steal",
+    "\\\\evil.example/steal",
+    "\\/evil.example/steal",
+  ];
+  for (const target of offOrigin) {
+    await assert.rejects(
+      () => backendFetch(target),
+      /Refusing to send a credentialed request/,
+      `must refuse ${JSON.stringify(target)}`,
+    );
+  }
 }
 
 // health probe must reject a different app exposing a contractVersion
@@ -135,5 +173,69 @@ assert.equal(
   "Une erreur est survenue.",
 );
 setGenericErrorMessage("A server error has occurred.");
+
+// per-request seam: two locales concurrently, no shared mutable default
+{
+  const en = createActionResponseFactory({ genericMessage: "Server error." });
+  const fr = createActionResponseFactory({ genericMessage: "Erreur serveur." });
+  assert.equal(en({ error: new Error("x") }).errorMessage, "Server error.");
+  assert.equal(fr({ error: new Error("x") }).errorMessage, "Erreur serveur.");
+  // the bound factory keeps the overload behaviour
+  assert.deepEqual(en(), { success: true, data: null });
+  assert.deepEqual(en({ data: 7 }), { success: true, data: 7 });
+  // a coded business error still keeps its own message, not the fallback
+  assert.equal(
+    fr({ error: new AppBusinessError("specific", 403, "FORBIDDEN") }).errorMessage,
+    "specific",
+  );
+}
+
+// bigint-safe dedupe hash: JSON.stringify throws on these keys
+assert.equal(stableHash(["readContract", { args: [1n] }]), stableHash(["readContract", { args: [1n] }]));
+assert.notEqual(stableHash(["a", 1n]), stableHash(["a", 1]));
+// key order must not change the hash, or dedupe misses structural duplicates
+assert.equal(stableHash({ a: 1, b: 2 }), stableHash({ b: 2, a: 1 }));
+
+// a malformed bigint wrapper must not abort the whole parse
+{
+  const parsed = bigIntParse<{ a: unknown; b: number }>('{"a":{"__bigint__":"abc"},"b":1}');
+  assert.equal(parsed.b, 1, "sibling keys survive a malformed wrapper");
+  assert.equal(toBigInt(parsed.a), null, "and the bad field resolves to null");
+}
+
+// redaction discriminant must win over a same-named domain field
+{
+  const out = redact({ visibility: "sneaky", id: "x" } as never, true);
+  assert.equal((out as { visibility: string }).visibility, "public");
+  assert.equal(isVisible(out), true);
+}
+
+// identity scope must not collide across separator-bearing ids
+assert.notEqual(
+  getIdentityScopeKey({ userId: "a:b", organizationId: "c", memberId: "d" }),
+  getIdentityScopeKey({ userId: "a", organizationId: "b:c", memberId: "d" }),
+);
+
+// gcTime must not evict an entry that is still considered fresh
+for (const [name, tier] of Object.entries(CACHE_TIMES)) {
+  if (tier.staleTime === 0) continue;
+  assert.ok(tier.gcTime >= tier.staleTime, `${name}: gcTime must be >= staleTime`);
+}
+
+// dehydrate filter excludes sensitive roots, pending, and errored queries
+{
+  const shouldDehydrate = createShouldDehydrateQuery({
+    excludedKeyRoots: ["deal-terms"],
+    excludedExternalRoots: ["readContract"],
+  });
+  const q = (key: unknown[], status = "success", fetchStatus = "idle") =>
+    ({ queryKey: key, state: { status, fetchStatus } }) as never;
+  assert.equal(shouldDehydrate(q(["public-list"])), true);
+  assert.equal(shouldDehydrate(q(["deal-terms", "1"])), false);
+  assert.equal(shouldDehydrate(q(["readContract", {}])), false);
+  assert.equal(shouldDehydrate(q(["public-list"], "pending")), false);
+  assert.equal(shouldDehydrate(q(["public-list"], "error")), false);
+  assert.equal(shouldDehydrate(q(["public-list"], "success", "fetching")), false);
+}
 
 console.log("all regression assertions passed");

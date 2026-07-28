@@ -26,10 +26,15 @@ export const CACHE_TIMES = {
 
   /**
    * 24 hours — static reference data (cities, countries).
+   *
    * Deliberately finite rather than `Infinity`, so the server cache stays the
    * freshness boundary and a long-lived tab eventually re-reads.
+   *
+   * `gcTime` must be >= `staleTime`: a shorter one evicts the entry while it is
+   * still considered fresh, so every remount refetches and the long staleTime
+   * buys nothing.
    */
-  DAY_CACHE: { staleTime: 24 * 60 * 60 * 1000, gcTime: 30 * 60 * 1000 },
+  DAY_CACHE: { staleTime: 24 * 60 * 60 * 1000, gcTime: 25 * 60 * 60 * 1000 },
 } as const;
 
 export type CacheTime = (typeof CACHE_TIMES)[keyof typeof CACHE_TIMES];

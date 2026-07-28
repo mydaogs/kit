@@ -1,6 +1,7 @@
 {
   "name": "@kit/contract",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "description": "Versioned backend wire contract: response envelope, error catalog, credential-free public lane, build-time version probe",
   "sideEffects": false,

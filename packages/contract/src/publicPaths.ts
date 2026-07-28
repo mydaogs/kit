@@ -15,13 +15,27 @@ export const createPublicPathValidator = <const TPaths extends readonly string[]
 ) => {
   const basePaths = new Set<string>(paths);
 
-  return (pathname: string): void => {
-    if (/^https?:\/\//.test(pathname)) {
-      throw new Error("publicFetch only accepts backend pathnames");
+  /**
+   * Validates against the URL that will actually be fetched.
+   *
+   * Parsing against a throwaway base is unsound: `//evil.example/public-data/x`
+   * resolves to pathname `/public-data/x` under a dummy base — passing the
+   * allowlist — while resolving to `https://evil.example/public-data/x` under
+   * the real origin. The request then returns attacker-controlled JSON that the
+   * caller treats as a trusted `ApiResponse`. Same `origin` comparison as the
+   * credentialed lane, for the same reason.
+   */
+  return (pathname: string, origin: string): void => {
+    const base = new URL(origin);
+    const target = new URL(pathname, base);
+
+    if (target.origin !== base.origin) {
+      throw new Error(
+        `Refusing a public backend request to ${target.origin}; configured backend origin is ${base.origin}`,
+      );
     }
-    const url = new URL(pathname, "https://public-backend-path.invalid");
-    if (!basePaths.has(url.pathname)) {
-      throw new Error(`Unsupported public backend path: ${url.pathname}`);
+    if (!basePaths.has(target.pathname)) {
+      throw new Error(`Unsupported public backend path: ${target.pathname}`);
     }
   };
 };

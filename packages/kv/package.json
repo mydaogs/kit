@@ -1,6 +1,7 @@
 {
   "name": "@kit/kv",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "description": "Shared Redis client with lazy env resolution, safe to load inside Next runtime infrastructure",
   "sideEffects": false,

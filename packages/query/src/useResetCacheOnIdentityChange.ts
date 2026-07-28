@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { QueryClient } from "@tanstack/react-query";
-import { getIdentityScopeKey, removeIdentityScopedQueries } from "./identityScope";
+import {
+  ANONYMOUS_IDENTITY,
+  getIdentityScopeKey,
+  removeIdentityScopedQueries,
+} from "./identityScope";
 import type { IdentityScope, RemoveIdentityScopedQueriesOptions } from "./identityScope";
 
 export interface QueryPersister {
@@ -25,8 +29,8 @@ export interface QueryPersister {
  * observers should wait on this before issuing requests, otherwise a query can
  * start and be immediately removed by the same transition.
  *
- * `removeOptions` is read from a ref, so an inline object literal at the call
- * site does not retrigger the effect on every render.
+ * `removeOptions` and `persister` are read from refs, so inline object literals
+ * at the call site do not retrigger the effect on every render.
  */
 export function useResetCacheOnIdentityChange(params: {
   queryClient: QueryClient;
@@ -34,15 +38,39 @@ export function useResetCacheOnIdentityChange(params: {
   scope: IdentityScope | null;
   isPending: boolean;
   removeOptions: RemoveIdentityScopedQueriesOptions;
+  /**
+   * Clear when the FIRST settled identity is anonymous, instead of adopting it
+   * as a clean baseline. Defaults to `true`.
+   *
+   * A restored cache plus an expired session presents as "anonymous on first
+   * load", which the baseline rule would treat as nothing to do — leaving the
+   * previous user's persisted private queries readable by whoever is at the
+   * browser now. Only set this false when the persisted cache is known to hold
+   * nothing viewer-scoped.
+   */
+  clearOnAnonymousBaseline?: boolean;
 }): boolean {
-  const { queryClient, persister, scope, isPending, removeOptions } = params;
+  const {
+    queryClient,
+    persister,
+    scope,
+    isPending,
+    removeOptions,
+    clearOnAnonymousBaseline = true,
+  } = params;
   const identity = getIdentityScopeKey(scope);
 
   const [settledIdentity, setSettledIdentity] = useState<string | null>(null);
   const prevIdentityRef = useRef<string | null>(null);
   const hasBaselineRef = useRef(false);
+  // Assigned in an effect, not the render body: a render that React discards
+  // must not be able to publish a value the committed tree never saw.
   const removeOptionsRef = useRef(removeOptions);
-  removeOptionsRef.current = removeOptions;
+  const persisterRef = useRef(persister);
+  useEffect(() => {
+    removeOptionsRef.current = removeOptions;
+    persisterRef.current = persister;
+  });
 
   useEffect(() => {
     if (isPending) return;
@@ -50,6 +78,14 @@ export function useResetCacheOnIdentityChange(params: {
     if (!hasBaselineRef.current) {
       prevIdentityRef.current = identity;
       hasBaselineRef.current = true;
+
+      // An anonymous first identity may be an expired session over a restored
+      // private cache, not a fresh visitor. Purge rather than adopt.
+      if (clearOnAnonymousBaseline && identity === ANONYMOUS_IDENTITY) {
+        removeIdentityScopedQueries(queryClient, removeOptionsRef.current);
+        void persisterRef.current.removeClient();
+      }
+
       setSettledIdentity(identity);
       return;
     }
@@ -57,10 +93,10 @@ export function useResetCacheOnIdentityChange(params: {
     if (identity !== prevIdentityRef.current) {
       prevIdentityRef.current = identity;
       removeIdentityScopedQueries(queryClient, removeOptionsRef.current);
-      void persister.removeClient();
+      void persisterRef.current.removeClient();
       setSettledIdentity(identity);
     }
-  }, [identity, isPending, persister, queryClient]);
+  }, [identity, isPending, queryClient, clearOnAnonymousBaseline]);
 
   return !isPending && hasBaselineRef.current && settledIdentity === identity;
 }

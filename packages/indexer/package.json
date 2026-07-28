@@ -1,6 +1,7 @@
 {
   "name": "@kit/indexer",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "description": "Storage-agnostic onchain event projection: atomic claim, capped backoff, ordering watermarks, terminal-failure taxonomy",
   "sideEffects": false,

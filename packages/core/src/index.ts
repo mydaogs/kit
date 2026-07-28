@@ -5,6 +5,7 @@ export {
   bigIntParse,
   toBigInt,
 } from "./bigIntJson";
+export { stableHash } from "./stableHash";
 export type { ValueOf, ExtractPathParams, NonEmptyArray } from "./types";
 export { buildDynamicRoutePath } from "./buildDynamicRoutePath";
 export type { BuildDynamicRoutePathOptions } from "./buildDynamicRoutePath";

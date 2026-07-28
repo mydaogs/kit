@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { stableHash } from "@kit/core";
 import { AppBusinessError } from "@kit/contract";
 import type { TxSyncQueryKey } from "./txSyncStorage";
 
@@ -43,7 +44,11 @@ export async function invalidateQueryKeys(params: {
   const unique: TxSyncQueryKey[] = [];
 
   for (const key of params.queryKeysToInvalidate) {
-    const serialized = JSON.stringify(toQueryKeyArray(key));
+    // `stableHash`, not `JSON.stringify`: wallet-library query keys routinely
+    // carry bigints (chain ids, amounts, block numbers), and stringify throws
+    // on them — which would fail dedupe before any invalidation ran, turning
+    // every confirmed transaction into a false refresh-warning.
+    const serialized = stableHash(toQueryKeyArray(key));
     if (seen.has(serialized)) continue;
     seen.add(serialized);
     unique.push(key);

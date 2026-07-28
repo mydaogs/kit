@@ -89,6 +89,17 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
+if (scannedFiles === 0) {
+  // Same reasoning as the cache-handler guard: a check that cannot tell "no
+  // violations" from "scanned nothing" reports success forever after a
+  // directory move, which is exactly the silent drift it exists to catch.
+  console.error(
+    `Cache invalidation check failed: found no backend-writer files under ${srcDir}\n` +
+      `Expected at least one file under ${BACKEND_WRITER_PATHS.join(", ")}`,
+  );
+  process.exit(1);
+}
+
 console.log(
   `Cache invalidation check passed (${scannedFiles} backend-writer file(s) scanned)`,
 );

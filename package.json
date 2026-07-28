@@ -32,6 +32,8 @@
     "@kit/cache-handler": "workspace:*",
     "@kit/contract": "workspace:*",
     "@kit/core": "workspace:*",
-    "@kit/indexer": "workspace:*"
+    "@kit/indexer": "workspace:*",
+    "@kit/query": "workspace:*",
+    "@kit/web3": "workspace:*"
   }
 }

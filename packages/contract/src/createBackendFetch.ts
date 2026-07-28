@@ -117,27 +117,41 @@ export function createBackendFetch<const TPaths extends readonly string[]>(
   const messages = options.messages ?? DEFAULT_MESSAGES;
 
   /**
-   * Absolute URLs are pinned to the configured origin.
+   * Every request is pinned to the configured origin.
    *
-   * The credentialed fetcher sends `credentials: "include"`, so accepting an
-   * arbitrary absolute URL would forward the session cookie to any host a
-   * caller can name — the exact hazard the public lane is hardened against.
+   * The credentialed fetcher sends `credentials: "include"`, so a request to
+   * any other host forwards the session cookie there — the exact hazard the
+   * public lane is hardened against.
+   *
+   * The check runs on the **resolved** URL rather than per input shape. Pinning
+   * only inputs matching `^https?://` leaves several forms that resolve to a
+   * foreign host without looking absolute:
+   *
+   * ```
+   * new URL("//evil.example/x",   "https://api.example")  -> https://evil.example/x
+   * new URL("\\\\evil.example/x", "https://api.example")  -> https://evil.example/x
+   * new URL("\\/evil.example/x",  "https://api.example")  -> https://evil.example/x
+   * ```
+   *
+   * WHATWG URL normalizes backslashes to forward slashes for special schemes,
+   * so scheme-relative input in either slash direction swaps the host while
+   * inheriting the scheme. Resolving first and comparing `origin` once covers
+   * absolute, relative, and scheme-relative input with no shape enumeration.
    */
   const buildUrl = (pathname: string): string => {
     const origin = options.getOrigin();
     if (!origin) throw new Error("Backend origin is not configured");
 
-    if (/^https?:\/\//.test(pathname)) {
-      const target = new URL(pathname);
-      if (target.origin !== new URL(origin).origin) {
-        throw new Error(
-          `Refusing to send a credentialed request to ${target.origin}; configured backend origin is ${new URL(origin).origin}`,
-        );
-      }
-      return target.toString();
+    const base = new URL(origin);
+    const target = new URL(pathname, base);
+
+    if (target.origin !== base.origin) {
+      throw new Error(
+        `Refusing to send a credentialed request to ${target.origin}; configured backend origin is ${base.origin}`,
+      );
     }
 
-    return new URL(pathname, origin).toString();
+    return target.toString();
   };
 
   const request = async <T>(params: {
@@ -205,7 +219,7 @@ export function createBackendFetch<const TPaths extends readonly string[]>(
     if (unsafeInit.headers !== undefined) {
       throw new Error("publicBackendFetch does not allow custom headers");
     }
-    validatePublicPath(pathname);
+    validatePublicPath(pathname, options.getOrigin());
 
     return request<T>({
       pathname,

@@ -12,7 +12,11 @@ export type {
   ActionResponseSuccessWithData,
   ActionResponseSuccessWithoutData,
 } from "./envelope";
-export { createActionResponse } from "./createActionResponse";
+export {
+  createActionResponse,
+  createActionResponseFactory,
+} from "./createActionResponse";
+export type { ActionResponseOptions } from "./createActionResponse";
 export { redact, isVisible, HIDDEN } from "./redaction";
 export type { Redactable } from "./redaction";
 export { createPublicPathValidator } from "./publicPaths";

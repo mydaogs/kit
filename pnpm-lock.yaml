@@ -20,6 +20,12 @@ importers:
       '@kit/indexer':
         specifier: workspace:*
         version: link:packages/indexer
+      '@kit/query':
+        specifier: workspace:*
+        version: link:packages/query
+      '@kit/web3':
+        specifier: workspace:*
+        version: link:packages/web3
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.5
@@ -6433,10 +6439,10 @@ snapshots:
   ox@0.6.7(typescript@5.9.3)(zod@4.4.3):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
-      '@noble/curves': 1.8.1
-      '@noble/hashes': 1.7.1
-      '@scure/bip32': 1.6.2
-      '@scure/bip39': 1.5.4
+      '@noble/curves': 1.9.7
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
       abitype: 1.0.8(typescript@5.9.3)(zod@4.4.3)
       eventemitter3: 5.0.1
     optionalDependencies:

@@ -33,7 +33,15 @@ export const bigIntReplacer = (_key: string, value: unknown): unknown => {
 
 export const bigIntReviver = (_key: string, value: unknown): unknown => {
   if (isBigIntWrapper(value)) {
-    return BigInt(value.__bigint__);
+    try {
+      return BigInt(value.__bigint__);
+    } catch {
+      // A reviver that throws aborts the ENTIRE `JSON.parse`, discarding every
+      // sibling key over one malformed value. Hand back the wrapper untouched
+      // instead: the payload survives, and `toBigInt` resolves it to `null` so
+      // the caller decides how to handle a single bad field.
+      return value;
+    }
   }
   return value;
 };

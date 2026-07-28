@@ -1,6 +1,7 @@
 {
   "name": "@kit/web3",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "description": "Isomorphic web3 config: env-driven chain resolution, bytes32 helpers, explorer URLs, revert decoding",
   "sideEffects": false,

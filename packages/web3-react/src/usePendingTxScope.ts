@@ -29,16 +29,20 @@ export interface PendingTxScopeSelection {
 const EMPTY_STORE: TxSyncStore = {};
 const getServerSnapshot = (): TxSyncStore => EMPTY_STORE;
 
-// Frozen so a consumer cannot mutate the shared empty result in place.
-const EMPTY_SELECTION: PendingTxScopeSelection = Object.freeze({
-  pendingEntityIds: Object.freeze(new Set<string>()) as ReadonlySet<string>,
-  entries: Object.freeze([]) as readonly TxSyncEntry[],
-  blockingEntryByConflictKey: Object.freeze(
-    new Map<string, TxSyncEntry>(),
-  ) as ReadonlyMap<string, TxSyncEntry>,
-  blockingEntryByActionKey: Object.freeze(
-    new Map<string, TxSyncEntry>(),
-  ) as ReadonlyMap<string, TxSyncEntry>,
+/**
+ * Built fresh rather than shared.
+ *
+ * `Object.freeze` does not protect a Set or Map — their contents live in
+ * internal slots, so `Object.freeze(new Set()).add(x)` still mutates. A shared
+ * empty singleton would therefore be poisonable by any consumer that casts away
+ * the readonly types. Constructing inside `useMemo` is just as stable across
+ * renders and has no shared state to protect.
+ */
+const emptySelection = (): PendingTxScopeSelection => ({
+  pendingEntityIds: new Set<string>(),
+  entries: [],
+  blockingEntryByConflictKey: new Map<string, TxSyncEntry>(),
+  blockingEntryByActionKey: new Map<string, TxSyncEntry>(),
 });
 
 const sameAddress = (
@@ -78,6 +82,16 @@ export function createUsePendingTxScope(storage: TxSyncStorage) {
      *   matching case-insensitively
      */
     account?: `0x${string}` | null;
+    /**
+     * Whether `account: undefined` admits entries from every account.
+     * Defaults to `true`, which keeps a control from flickering back to enabled
+     * while a wallet reconnects.
+     *
+     * Set `false` on a shared-device surface: the window is narrow (only while
+     * the address resolves) but during it a visitor does observe the previous
+     * wallet's pending state.
+     */
+    admitUnknownAccount?: boolean;
   }): PendingTxScopeSelection {
     const store = useSyncExternalStore<TxSyncStore>(
       storage.subscribe,
@@ -87,10 +101,11 @@ export function createUsePendingTxScope(storage: TxSyncStorage) {
     );
 
     const account = params?.account;
+    const admitUnknownAccount = params?.admitUnknownAccount ?? true;
 
     return useMemo<PendingTxScopeSelection>(() => {
       const allEntries = Object.values(store);
-      if (allEntries.length === 0) return EMPTY_SELECTION;
+      if (allEntries.length === 0) return emptySelection();
 
       const pendingEntityIds = new Set<string>();
       const blockingEntryByConflictKey = new Map<string, TxSyncEntry>();
@@ -98,7 +113,7 @@ export function createUsePendingTxScope(storage: TxSyncStorage) {
       const visible: TxSyncEntry[] = [];
 
       const admits = (entry: TxSyncEntry): boolean => {
-        if (account === undefined) return true;
+        if (account === undefined) return admitUnknownAccount;
         if (entry.account === null) return true;
         if (account === null) return false;
         return sameAddress(entry.account, account);
@@ -135,6 +150,6 @@ export function createUsePendingTxScope(storage: TxSyncStorage) {
         blockingEntryByConflictKey,
         blockingEntryByActionKey,
       };
-    }, [store, account]);
+    }, [store, account, admitUnknownAccount]);
   };
 }
