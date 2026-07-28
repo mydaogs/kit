@@ -15,4 +15,4 @@ Peer dependencies are listed in `package.json` and are deliberately not bundled
 ## Cross-cutting docs
 
 Rules, architecture decisions, and patterns that belong to no single package live in
-[`@mydaogs/shared-docs`](../shared-docs/README.md)
+[`@mydaogs/shared-docs`](https://www.npmjs.com/package/@mydaogs/shared-docs)

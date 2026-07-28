@@ -31,8 +31,14 @@ if (typeof token !== "string" || token.length === 0) {
 }
 
 if (!url.startsWith("https://")) {
+  // Report the scheme, never the value. A misconfigured URL can carry userinfo
+  // (`redis://user:password@host`) or a private hostname, and this message goes
+  // wherever the process logs. The scheme is the whole diagnosis anyway — it
+  // names the wrong thing that was set.
   throw new Error(
-    `UPSTASH_REDIS_REST_URL must start with https://. Received: ${url}`,
+    `UPSTASH_REDIS_REST_URL must start with https://. Received scheme: "${
+      url.split(":")[0] ?? "<none>"
+    }:"`,
   );
 }
 

@@ -23,8 +23,13 @@ function assertRedisEnv(): { url: string; token: string } {
     throw new Error("@mydaogs/kv: UPSTASH_REDIS_REST_URL is missing or empty");
   }
   if (!url.startsWith("https://")) {
+    // Scheme only, never the value: a misconfigured URL can carry userinfo
+    // (`redis://user:password@host`) or a private hostname, and this throws
+    // into whatever the process logs.
     throw new Error(
-      `@mydaogs/kv: UPSTASH_REDIS_REST_URL must start with "https://" (got: "${url}")`,
+      `@mydaogs/kv: UPSTASH_REDIS_REST_URL must start with "https://" (got scheme: "${
+        url.split(":")[0] ?? "<none>"
+      }:")`,
     );
   }
   if (typeof token !== "string" || token.trim() === "") {

@@ -90,7 +90,16 @@ try {
       continue;
     }
 
-    for (const [, link] of readme.matchAll(/\]\((\.\/[^)\s]+)\)/g)) {
+    for (const [, link] of readme.matchAll(/\]\((\.\.?\/[^)\s]+)\)/g)) {
+      // A `../` link points outside the package. It resolves in the repo and
+      // 404s for anyone who installed the package, because sibling packages do
+      // not exist inside a tarball. Cross-package references must be absolute.
+      if (link.startsWith("../")) {
+        failures.push(
+          `${file}: README links ${link}, which is outside the package — use an absolute npm or GitHub URL`,
+        );
+        continue;
+      }
       const target = link.replace(/^\.\//, "").replace(/#.*$/, "");
       if (!contents.includes(target)) {
         failures.push(`${file}: README links ${link}, which \`files\` does not ship`);

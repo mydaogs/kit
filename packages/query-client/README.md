@@ -7,7 +7,7 @@ package is a client boundary and ships with `"use client"` on its entry
 
 The isomorphic half — cache tiers, query-fn factories, the dehydrate filter, and
 the identity-scope primitives this hook calls — lives in
-[`@mydaogs/query`](../query/README.md), which has no React in its dependency
+[`@mydaogs/query`](https://www.npmjs.com/package/@mydaogs/query), which has no React in its dependency
 graph
 
 ## Install
@@ -33,7 +33,7 @@ from `localStorage`:
 
 - `useResetCacheOnIdentityChange` clears the cache on an observed identity
   transition
-- `createShouldDehydrateQuery` (in [`@mydaogs/query`](../query/README.md)) bounds
+- `createShouldDehydrateQuery` (in [`@mydaogs/query`](https://www.npmjs.com/package/@mydaogs/query)) bounds
   what reaches disk at all
 - a persister `buster` discards an incompatible cache shape
 
@@ -42,4 +42,4 @@ because that is what an expired session over a restored cache looks like
 
 ## Cross-cutting docs
 
-See [`@mydaogs/shared-docs`](../shared-docs/README.md)
+See [`@mydaogs/shared-docs`](https://www.npmjs.com/package/@mydaogs/shared-docs)

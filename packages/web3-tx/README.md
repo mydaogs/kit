@@ -4,7 +4,7 @@
 
 The durable registry behind the contract-write wrapper: cross-tab ownership via Web Locks, receipt reconciliation with classified retry postures, and the transaction vocabulary.
 
-No React in the dependency graph — the hooks that consume this live in [`@mydaogs/web3-client`](../web3-client/README.md).
+No React in the dependency graph — the hooks that consume this live in [`@mydaogs/web3-client`](https://www.npmjs.com/package/@mydaogs/web3-client).
 
 ## Documentation
 
@@ -24,4 +24,4 @@ Peer dependencies are listed in `package.json` and are deliberately not bundled
 ## Cross-cutting docs
 
 Rules, architecture decisions, and patterns that belong to no single package live in
-[`@mydaogs/shared-docs`](../shared-docs/README.md)
+[`@mydaogs/shared-docs`](https://www.npmjs.com/package/@mydaogs/shared-docs)

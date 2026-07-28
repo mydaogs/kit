@@ -8,7 +8,7 @@ Everything here imports React, so the whole package is a client boundary and
 ships with `"use client"` on its entry
 
 The durable registry underneath — storage, reconciliation, vocabulary, and the
-toast adapter contract — lives in [`@mydaogs/web3-tx`](../web3-tx/README.md),
+toast adapter contract — lives in [`@mydaogs/web3-tx`](https://www.npmjs.com/package/@mydaogs/web3-tx),
 which has no React in its dependency graph
 
 ## Documentation
@@ -49,4 +49,4 @@ and would put `"use client"` over the registry as well
 
 ## Cross-cutting docs
 
-See [`@mydaogs/shared-docs`](../shared-docs/README.md)
+See [`@mydaogs/shared-docs`](https://www.npmjs.com/package/@mydaogs/shared-docs)

@@ -10,7 +10,6 @@ These docs are the single source of truth for this package and ship with it:
 
 - [`ARCH-env-config-split.md`](./ARCH-env-config-split.md)
 - [`ARCH-network-config.md`](./ARCH-network-config.md)
-- [`ARCH-wagmi-integration.md`](./ARCH-wagmi-integration.md)
 
 ## Install
 
@@ -23,4 +22,4 @@ Peer dependencies are listed in `package.json` and are deliberately not bundled
 ## Cross-cutting docs
 
 Rules, architecture decisions, and patterns that belong to no single package live in
-[`@mydaogs/shared-docs`](../shared-docs/README.md)
+[`@mydaogs/shared-docs`](https://www.npmjs.com/package/@mydaogs/shared-docs)
