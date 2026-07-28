@@ -63,7 +63,15 @@ From npm, packages resolve to compiled `dist/` output and need no transpilation.
 Inside this workspace they resolve to TypeScript source, so add them to the
 consuming app's `transpilePackages`
 
-`@mydaogs/cache-handler` additionally needs `runtime/*.mjs` codegen — see [`packages/cache-handler/scripts/README.md`](packages/cache-handler/scripts/README.md)
+`@mydaogs/cache-handler` needs wiring that nothing errors without — registering
+the handler, tracing it, and pointing the publisher at the same namespace. Each
+step fails silently, leaving a process-local cache and peers serving stale data.
+See [`packages/cache-handler/scripts/README.md`](packages/cache-handler/scripts/README.md),
+which ships with the package
+
+It needs no codegen step. The published output is already ESM that Node loads
+directly, which is what a cache handler requires — Next loads it outside the
+app's transpile pipeline
 
 ## Wiring the pieces
 

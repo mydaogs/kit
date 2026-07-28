@@ -66,6 +66,38 @@ try {
     });
   }
 
+  // A package's docs ship with it, so a README link that is not in the tarball
+  // is a dead link on npm. `files` controls this and silently excludes anything
+  // unlisted: 0.2.0 shipped `["dist","README.md"]` for every package and left 23
+  // linked documents behind, with nothing failing. The repo-wide markdown link
+  // check cannot see this — on disk the files are all present.
+  for (const file of readdirSync(tarballs)) {
+    const contents = execFileSync("tar", ["-tzf", join(tarballs, file)], {
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 16,
+    })
+      .split("\n")
+      .map((line) => line.replace(/^package\//, "").replace(/\/$/, ""));
+
+    let readme = "";
+    try {
+      readme = execFileSync("tar", ["-xzOf", join(tarballs, file), "package/README.md"], {
+        encoding: "utf8",
+        maxBuffer: 1024 * 1024 * 16,
+      });
+    } catch {
+      failures.push(`${file}: no README.md in the tarball`);
+      continue;
+    }
+
+    for (const [, link] of readme.matchAll(/\]\((\.\/[^)\s]+)\)/g)) {
+      const target = link.replace(/^\.\//, "").replace(/#.*$/, "");
+      if (!contents.includes(target)) {
+        failures.push(`${file}: README links ${link}, which \`files\` does not ship`);
+      }
+    }
+  }
+
   // Each tarball depends on its siblings by version, and those versions are not
   // on the registry during a pre-release check — so every @mydaogs specifier is
   // overridden to the local tarball.
@@ -150,7 +182,7 @@ try {
 }
 
 if (failures.length > 0) {
-  console.error(`\nverify-dist: ${failures.length} package(s) are not loadable as published:`);
+  console.error(`\nverify-dist: ${failures.length} problem(s) with the packages as published:`);
   for (const failure of failures) console.error(`  - ${failure}`);
   process.exit(1);
 }
