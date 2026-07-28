@@ -16,7 +16,7 @@
  * shared-docs, which is exempt: describing app architecture is its entire job.
  */
 import { readdirSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 
 const packagesDir = resolve(import.meta.dirname, "..", "packages");
 const EXEMPT = new Set(["shared-docs"]);
@@ -43,9 +43,22 @@ for (const pkg of readdirSync(packagesDir)) {
   } catch {
     continue;
   }
-  if (entries.length === 0) continue;
 
-  for (const file of entries) {
+  // Nested markdown ships too, and is easier to forget precisely because it is
+  // out of sight: cache-handler/scripts/README.md kept describing a codegen
+  // step that had been deleted, and went out in three releases because this
+  // check only looked at package roots.
+  const nested = readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith(".md"))
+    .map((e) => relative(dir, join(e.parentPath ?? e.path, e.name)))
+    // Only our own nested docs. An installed dependency's CHANGELOG is not ours
+    // to police, and node_modules is not published anyway.
+    .filter((f) => f.includes("/") && !f.split("/").includes("node_modules"));
+
+  const allDocs = [...entries, ...nested];
+  if (allDocs.length === 0) continue;
+
+  for (const file of allDocs) {
     const text = readFileSync(join(dir, file), "utf8");
     for (const { re, why } of FORBIDDEN) {
       const hits = [...text.matchAll(re)];

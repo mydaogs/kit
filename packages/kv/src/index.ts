@@ -35,10 +35,11 @@ if (!url.startsWith("https://")) {
   // (`redis://user:password@host`) or a private hostname, and this message goes
   // wherever the process logs. The scheme is the whole diagnosis anyway — it
   // names the wrong thing that was set.
+  const delimiter = url.indexOf(":");
   throw new Error(
     `UPSTASH_REDIS_REST_URL must start with https://. Received scheme: "${
-      url.split(":")[0] ?? "<none>"
-    }:"`,
+      delimiter > 0 ? url.slice(0, delimiter) : "<none>"
+    }"`,
   );
 }
 

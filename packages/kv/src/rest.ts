@@ -1,6 +1,21 @@
 import { Redis } from "@upstash/redis";
 
 /**
+ * The scheme of a URL-ish value, or `<none>` when it has no scheme delimiter.
+ *
+ * `value.split(":")[0]` is NOT sufficient: for a value with no colon at all —
+ * `private.redis.internal` — it returns the whole string, so the "scheme only"
+ * promise leaks a private hostname into whatever the process logs. The values
+ * that reach this branch are precisely the malformed ones, so it has to be
+ * exact rather than approximately right.
+ */
+const schemeOf = (value: string): string => {
+  const index = value.indexOf(":");
+  return index > 0 ? value.slice(0, index) : "<none>";
+};
+
+
+/**
  * Lazy singleton behind a Proxy so `process.env` is read at first *request*,
  * not at module load.
  *
@@ -27,9 +42,7 @@ function assertRedisEnv(): { url: string; token: string } {
     // (`redis://user:password@host`) or a private hostname, and this throws
     // into whatever the process logs.
     throw new Error(
-      `@mydaogs/kv: UPSTASH_REDIS_REST_URL must start with "https://" (got scheme: "${
-        url.split(":")[0] ?? "<none>"
-      }:")`,
+      `@mydaogs/kv: UPSTASH_REDIS_REST_URL must start with "https://" (got scheme: "${schemeOf(url)}")`,
     );
   }
   if (typeof token !== "string" || token.trim() === "") {
