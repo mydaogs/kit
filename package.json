@@ -1,5 +1,5 @@
 {
-  "name": "@kit/workspace",
+  "name": "@mydaogs/workspace",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,9 @@
     "check:cache-handlers": "node scripts/check-cache-handlers.mjs",
     "check:bare-revalidate": "node scripts/check-no-bare-revalidate.mjs",
     "verify": "tsx scripts/smoke.ts && tsx scripts/smoke-dom.ts",
-    "check": "pnpm check-types && pnpm lint && pnpm verify"
+    "check": "pnpm check-types && pnpm lint && pnpm verify && pnpm check-links",
+    "check-links": "pnpm --filter @mydaogs/shared-docs check-links",
+    "compile": "pnpm -r compile"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
@@ -29,11 +31,11 @@
     "zod": "3.24.0"
   },
   "dependencies": {
-    "@kit/cache-handler": "workspace:*",
-    "@kit/contract": "workspace:*",
-    "@kit/core": "workspace:*",
-    "@kit/indexer": "workspace:*",
-    "@kit/query": "workspace:*",
-    "@kit/web3": "workspace:*"
+    "@mydaogs/cache-handler": "workspace:*",
+    "@mydaogs/contract": "workspace:*",
+    "@mydaogs/core": "workspace:*",
+    "@mydaogs/indexer": "workspace:*",
+    "@mydaogs/query": "workspace:*",
+    "@mydaogs/web3": "workspace:*"
   }
 }

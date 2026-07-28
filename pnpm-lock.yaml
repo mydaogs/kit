@@ -8,22 +8,22 @@ importers:
 
   .:
     dependencies:
-      '@kit/cache-handler':
+      '@mydaogs/cache-handler':
         specifier: workspace:*
         version: link:packages/cache-handler
-      '@kit/contract':
+      '@mydaogs/contract':
         specifier: workspace:*
         version: link:packages/contract
-      '@kit/core':
+      '@mydaogs/core':
         specifier: workspace:*
         version: link:packages/core
-      '@kit/indexer':
+      '@mydaogs/indexer':
         specifier: workspace:*
         version: link:packages/indexer
-      '@kit/query':
+      '@mydaogs/query':
         specifier: workspace:*
         version: link:packages/query
-      '@kit/web3':
+      '@mydaogs/web3':
         specifier: workspace:*
         version: link:packages/web3
     devDependencies:
@@ -78,7 +78,7 @@ importers:
 
   packages/contract:
     dependencies:
-      '@kit/core':
+      '@mydaogs/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -94,7 +94,7 @@ importers:
 
   packages/indexer:
     dependencies:
-      '@kit/core':
+      '@mydaogs/core':
         specifier: workspace:*
         version: link:../core
       viem:
@@ -143,13 +143,13 @@ importers:
 
   packages/web3-react:
     dependencies:
-      '@kit/contract':
+      '@mydaogs/contract':
         specifier: workspace:*
         version: link:../contract
-      '@kit/core':
+      '@mydaogs/core':
         specifier: workspace:*
         version: link:../core
-      '@kit/web3':
+      '@mydaogs/web3':
         specifier: workspace:*
         version: link:../web3
       '@tanstack/react-query':

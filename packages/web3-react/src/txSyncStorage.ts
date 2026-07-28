@@ -1,4 +1,4 @@
-import { bigIntParse, bigIntStringify } from "@kit/core";
+import { bigIntParse, bigIntStringify } from "@mydaogs/core";
 import type { TxSyncVocabulary } from "./vocabulary";
 
 export type TxSyncPhase = "pending" | "reconciling" | "warning";

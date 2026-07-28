@@ -1,6 +1,6 @@
 # Shared packages
 
-Portable package kit for Next.js + web3 projects on this stack. Companion to [`../shared-docs/`](../shared-docs/README.md): the docs describe the patterns, these packages implement them
+Portable package kit for Next.js + web3 projects on this stack, published to public npm under the `@mydaogs` scope
 
 Everything here is domain-free. No product entities, no deployment identifiers, no hardcoded chains or routes
 
@@ -8,14 +8,14 @@ Everything here is domain-free. No product entities, no deployment identifiers, 
 
 | Package | Runtime | Peer deps | What it owns |
 | --- | --- | --- | --- |
-| `@kit/core` | isomorphic, zero-dep | — | bigint JSON wire protocol, typed dynamic route paths, type helpers |
-| `@kit/contract` | isomorphic | — | response envelope, error classes, redaction unions, public-path lane, build-time version probe, fetch factory |
-| `@kit/kv` | server | `@upstash/redis` | Redis client with lazy env resolution |
-| `@kit/cache-handler` | Next cache runtime | — | distributed cache handler, cross-app invalidation publisher, tag registry |
-| `@kit/query` | React | `react`, `@tanstack/react-query` | cache tiers, query-fn factories, fail-closed identity-scoped cache reset |
-| `@kit/web3` | isomorphic | `viem`, `zod` | chain resolution, env refinements, bytes32, explorer URLs, revert decoding |
-| `@kit/web3-react` | React | `wagmi`, `viem`, `@tanstack/react-query` | durable pending-tx registry, contract-write wrapper, pending scope selector |
-| `@kit/indexer` | server | `viem` | event hash, atomic claim contract, capped backoff, ordering watermarks, failure taxonomy |
+| `@mydaogs/core` | isomorphic, zero-dep | — | bigint JSON wire protocol, typed dynamic route paths, type helpers |
+| `@mydaogs/contract` | isomorphic | — | response envelope, error classes, redaction unions, public-path lane, build-time version probe, fetch factory |
+| `@mydaogs/kv` | server | `@upstash/redis` | Redis client with lazy env resolution |
+| `@mydaogs/cache-handler` | Next cache runtime | — | distributed cache handler, cross-app invalidation publisher, tag registry |
+| `@mydaogs/query` | React | `react`, `@tanstack/react-query` | cache tiers, query-fn factories, fail-closed identity-scoped cache reset |
+| `@mydaogs/web3` | isomorphic | `viem`, `zod` | chain resolution, env refinements, bytes32, explorer URLs, revert decoding |
+| `@mydaogs/web3-react` | React | `wagmi`, `viem`, `@tanstack/react-query` | durable pending-tx registry, contract-write wrapper, pending scope selector |
+| `@mydaogs/indexer` | server | `viem` | event hash, atomic claim contract, capped backoff, ordering watermarks, failure taxonomy |
 
 ### Why this split
 
@@ -27,6 +27,13 @@ Three boundaries are deliberate and should not be collapsed:
 - **`web3` is separate from `web3-react`.** A backend needs chain resolution and bytes32 helpers with no React in the graph
 - **`query` is separate from `web3-react`.** Query conventions are useful in projects with no chain at all
 
+## Documentation
+
+Every doc has exactly one home. A doc describing one package ships **with that
+package**; cross-cutting rules, decisions, and patterns live in
+[`@mydaogs/shared-docs`](packages/shared-docs/README.md). Nothing is duplicated,
+so there is no fork to keep in sync
+
 ## Install
 
 ```bash
@@ -35,13 +42,25 @@ pnpm install
 pnpm check     # typecheck + lint all packages, run behavioral and regression tests
 ```
 
+## Publishing
+
+Packages publish to public npm under `@mydaogs`. `exports` points at TypeScript
+source for workspace consumers, while `publishConfig` substitutes compiled
+`dist/` output at publish time — so local development needs no build step and
+registry consumers get real JavaScript
+
+The compile script is named `compile`, not `build`, because this repository
+hard-rules against adding `build`/`start` scripts to any `package.json`. Rename
+it to `build` once the kit is extracted to its own repository, where that rule no
+longer applies
+
 ## Consuming
 
-The packages export TypeScript source (`"exports": { ".": "./src/index.ts" }`), matching the workspace-package convention this stack already uses — consumers transpile them through Next. Add each package to the consuming app's `transpilePackages`
+From npm, packages resolve to compiled `dist/` output and need no transpilation.
+Inside this workspace they resolve to TypeScript source, so add them to the
+consuming app's `transpilePackages`
 
-To publish to a registry instead, add a build step per package and point `exports` at the emitted `dist`. Build scripts are intentionally absent here because the repo hard-rules prohibit adding `build`/`start` scripts to any `package.json`
-
-`@kit/cache-handler` additionally needs `runtime/*.mjs` codegen — see [`packages/cache-handler/scripts/README.md`](packages/cache-handler/scripts/README.md)
+`@mydaogs/cache-handler` additionally needs `runtime/*.mjs` codegen — see [`packages/cache-handler/scripts/README.md`](packages/cache-handler/scripts/README.md)
 
 ## Wiring the pieces
 
@@ -155,6 +174,14 @@ revalidateTag(
 );
 ```
 
-## Relationship to the app packages
+## Extraction status
 
-This is a **standalone kit**, not a refactor of `motherhunt-monorepo/packages/*`. The existing `@shared/*` packages continue to serve the apps unchanged. Adopting the kit in an existing app is a separate, opt-in migration
+This kit is destined for its own public repository. It is staged here so the
+restructure stays reviewable; the extraction itself is a subtree move with no
+rework:
+
+1. `git subtree split` / `filter-repo` this directory into `mydaogs/kit`
+2. Rename `compile` to `build` in each `package.json`
+3. Add a release workflow and publish `@mydaogs/*` to npm
+4. Replace `motherhunt-monorepo/packages/{cache-handler,kv}` with the published
+   packages, retiring the duplicated implementations

@@ -1,7 +1,29 @@
 {
-  "name": "@kit/kv",
+  "name": "@mydaogs/kv",
   "version": "0.1.0",
-  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mydaogs/kit.git",
+    "directory": "packages/kv"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      },
+      "./rest": {
+        "types": "./dist/rest.d.ts",
+        "import": "./dist/rest.js",
+        "default": "./dist/rest.js"
+      }
+    }
+  },
   "type": "module",
   "description": "Shared Redis client with lazy env resolution, safe to load inside Next runtime infrastructure",
   "sideEffects": false,
@@ -10,11 +32,14 @@
     "./rest": "./src/rest.ts"
   },
   "files": [
-    "src"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "check-types": "tsc --noEmit",
-    "lint": "eslint src --max-warnings 0"
+    "lint": "eslint src --max-warnings 0",
+    "compile": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "pnpm compile"
   },
   "peerDependencies": {
     "@upstash/redis": "^1.36.0"

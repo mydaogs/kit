@@ -7,7 +7,7 @@ export interface InfiniteQueryFnContext {
 /**
  * Query-function factories bound to a transport.
  *
- * Pass the credentialed and public fetchers from `@kit/contract`'s
+ * Pass the credentialed and public fetchers from `@mydaogs/contract`'s
  * `createBackendFetch`; the public variants then inherit its path allowlist,
  * so a public hook cannot silently start sending cookies.
  */

@@ -22,8 +22,8 @@ const nextConfig = {
     // production bundle omits it unless it is listed explicitly
     "/**": [
       "./cache-handlers/**/*",
-      "../../node_modules/@kit/cache-handler/runtime/**",
-      "../../node_modules/@kit/kv/runtime/**",
+      "../../node_modules/@mydaogs/cache-handler/runtime/**",
+      "../../node_modules/@mydaogs/kv/runtime/**",
       "../../node_modules/@upstash/redis/**",
     ],
   },
@@ -34,8 +34,8 @@ The app-local shim supplies the `appName` and the KV singleton:
 
 ```js
 // cache-handlers/distributed.mjs
-import { createDistributedCacheHandler } from "../../../node_modules/@kit/cache-handler/runtime/index.mjs";
-import { kv } from "../../../node_modules/@kit/kv/runtime/rest.mjs";
+import { createDistributedCacheHandler } from "../../../node_modules/@mydaogs/cache-handler/runtime/index.mjs";
+import { kv } from "../../../node_modules/@mydaogs/kv/runtime/rest.mjs";
 
 export default createDistributedCacheHandler({ appName: "app", kvClient: kv });
 ```

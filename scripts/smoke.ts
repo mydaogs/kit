@@ -6,12 +6,12 @@ import {
   buildDynamicRoutePath,
   truncateString,
   stableHash,
-} from "@kit/core";
+} from "@mydaogs/core";
 import {
   CACHE_TIMES,
   getIdentityScopeKey,
   createShouldDehydrateQuery,
-} from "@kit/query";
+} from "@mydaogs/query";
 import {
   createActionResponse,
   AppBusinessError,
@@ -22,10 +22,10 @@ import {
   isBackendHealthResponse,
   setGenericErrorMessage,
   createActionResponseFactory,
-} from "@kit/contract";
-import { computeRetryAt, computeStatusGapRetryAt, isNewerChainEvent, classifyProjectionFailure, StatusProjectionGapError, QuarantineProjectionError, computeEventHash } from "@kit/indexer";
+} from "@mydaogs/contract";
+import { computeRetryAt, computeStatusGapRetryAt, isNewerChainEvent, classifyProjectionFailure, StatusProjectionGapError, QuarantineProjectionError, computeEventHash } from "@mydaogs/indexer";
 import { getSyncRecoveryAction } from "../packages/web3-react/src/reconcile.ts";
-import { partitionTags, dedupeTags } from "@kit/cache-handler";
+import { partitionTags, dedupeTags } from "@mydaogs/cache-handler";
 
 // bigint round trip is lossless and does not capture look-alike strings
 const wire = bigIntStringify({ amount: 10n ** 30n, note: "1000", n: 5 });

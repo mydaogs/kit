@@ -2,7 +2,7 @@
  * Structural shape of the KV client callers wire into the cache handler and
  * publisher.
  *
- * This package intentionally has NO runtime dependency on `@kit/kv`. Reader
+ * This package intentionally has NO runtime dependency on `@mydaogs/kv`. Reader
  * apps load the compiled handler outside Next's transpile pipeline, so any
  * bare workspace specifier here would be unresolvable from a serverless host's
  * flattened layout. Hosts own the KV singleton and pass it in.

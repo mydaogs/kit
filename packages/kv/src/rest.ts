@@ -20,15 +20,15 @@ function assertRedisEnv(): { url: string; token: string } {
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   if (typeof url !== "string" || url.trim() === "") {
-    throw new Error("@kit/kv: UPSTASH_REDIS_REST_URL is missing or empty");
+    throw new Error("@mydaogs/kv: UPSTASH_REDIS_REST_URL is missing or empty");
   }
   if (!url.startsWith("https://")) {
     throw new Error(
-      `@kit/kv: UPSTASH_REDIS_REST_URL must start with "https://" (got: "${url}")`,
+      `@mydaogs/kv: UPSTASH_REDIS_REST_URL must start with "https://" (got: "${url}")`,
     );
   }
   if (typeof token !== "string" || token.trim() === "") {
-    throw new Error("@kit/kv: UPSTASH_REDIS_REST_TOKEN is missing or empty");
+    throw new Error("@mydaogs/kv: UPSTASH_REDIS_REST_TOKEN is missing or empty");
   }
 
   return { url, token };

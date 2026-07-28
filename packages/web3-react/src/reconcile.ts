@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { stableHash } from "@kit/core";
-import { AppBusinessError } from "@kit/contract";
+import { stableHash } from "@mydaogs/core";
+import { AppBusinessError } from "@mydaogs/contract";
 import type { TxSyncQueryKey } from "./txSyncStorage";
 
 export type RecoveryAction = "pause-auth" | "retry" | "terminal";

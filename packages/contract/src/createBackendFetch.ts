@@ -1,4 +1,4 @@
-import { bigIntReviver, bigIntStringify } from "@kit/core";
+import { bigIntReviver, bigIntStringify } from "@mydaogs/core";
 import { AppBusinessError } from "./errors";
 import type { ApiResponse } from "./envelope";
 import { createPublicPathValidator, type PublicPathOf } from "./publicPaths";
