@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      # A tag never publishes something that would not have passed a PR
+      - run: pnpm check
+      - run: pnpm build
+      # `pnpm -r publish`, not `npm publish`: the packages depend on each other
+      # through `workspace:*`, and only pnpm rewrites that to the real version
+      # range on the way out. npm would publish the literal `workspace:*` spec,
+      # which no registry consumer can install.
+      #
+      # --no-git-checks: a tag build has detached HEAD, which pnpm otherwise
+      # refuses to publish from.
+      #
+      # Packages whose version already exists in the registry are skipped, so
+      # bumping one package and tagging does not republish the other eight.
+      - run: pnpm -r publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

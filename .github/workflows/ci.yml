@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # typecheck (8 packages, strict) + lint + tests + markdown link check
+      - run: pnpm check
+      # Publishable output must actually compile, not just typecheck
+      - run: pnpm build
+      # scripts/check-cache-handlers.mjs and scripts/check-no-bare-revalidate.mjs
+      # deliberately do not run here. Both exit non-zero when they scan zero
+      # files, and there is nothing in this repository for them to scan — they
+      # are tools a consuming repo points at its own app directories.
