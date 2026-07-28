@@ -26,36 +26,62 @@ export interface RemoveIdentityScopedQueriesOptions {
   /** Query-key roots that are safe to keep across an identity transition. */
   publicKeys: readonly string[];
   /**
-   * Roots owned by wallet libraries, matched by their expected key shape.
-   * Anything else unrecognized is removed.
+   * Decides whether a query owned by an external library (wagmi, and anything
+   * else that manages its own key shape) survives the transition.
+   *
+   * This is a **predicate over the whole key, not a root allowlist**, because
+   * a root allowlist cannot express a partial carve-out — and partial is what
+   * is actually needed. A wallet library's `readContract` root covers both
+   * harmless chain reads and viewer-scoped financial reads under the same
+   * root; keeping the root wholesale reinstates exactly the cross-identity
+   * leak this function exists to prevent (deal terms fetched under one
+   * identity staying readable after switching to another).
+   *
+   * A correct implementation validates the key shape it expects and then
+   * excludes the sensitive subset, e.g.:
+   *
+   * ```ts
+   * isRetainableExternalQuery: (queryKey) => {
+   *   if (queryKey.length !== 2) return false;              // not the shape we know
+   *   const [root, args] = queryKey;
+   *   if (root !== "readContract") return false;
+   *   if (!args || typeof args !== "object" || Array.isArray(args)) return false;
+   *   return !isFinancialRead(args);                        // carve-out
+   * }
+   * ```
+   *
+   * Omit it entirely to drop every external query — the safest default.
    */
-  externalKeyRoots?: readonly string[];
+  isRetainableExternalQuery?: (queryKey: readonly unknown[]) => boolean;
   /** Root retained as `null` after sign-out to avoid an immediate refetch. */
   sessionKey?: string;
 }
 
 /**
- * Removes every cached query that is not explicitly public.
+ * Removes every cached query that is not explicitly retainable.
  *
- * **Fails closed by design.** An unrecognized key root is treated as private
- * and dropped. The alternative — a denylist — leaks the moment someone adds a
- * hook and forgets to register it, and the failure is invisible: the next user
- * on that browser simply sees the previous user's data.
+ * **Fails closed by design.** An unrecognized key is treated as private and
+ * dropped. The alternative — a denylist — leaks the moment someone adds a hook
+ * and forgets to register it, and the failure is invisible: the next user on
+ * that browser simply sees the previous user's data.
  */
 export function removeIdentityScopedQueries(
   queryClient: QueryClient,
   options: RemoveIdentityScopedQueriesOptions,
 ): void {
   const publicKeys = new Set<string>(options.publicKeys);
-  const externalRoots = new Set<string>(options.externalKeyRoots ?? []);
 
   queryClient.removeQueries({
     predicate: (query) => {
-      const root = query.queryKey[0];
+      const queryKey = query.queryKey;
+      const root = queryKey[0];
+
+      // A non-string root is a shape we do not recognize: fail closed.
       if (typeof root !== "string") return true;
       if (options.sessionKey && root === options.sessionKey) return false;
       if (publicKeys.has(root)) return false;
-      if (externalRoots.has(root)) return false;
+      if (options.isRetainableExternalQuery?.(queryKey)) return false;
+
       return true;
     },
   });

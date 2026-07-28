@@ -15,10 +15,13 @@ export function createEnvConfig<TSchema extends z.ZodType>(params: {
   label?: string;
 }): () => z.infer<TSchema> {
   const label = params.label ?? "Env vars";
-  let cached: z.infer<TSchema> | undefined;
+  // A sentinel, not `undefined`: a schema whose output is legitimately
+  // `undefined` would otherwise re-parse on every call.
+  const UNSET = Symbol("unset");
+  let cached: z.infer<TSchema> | typeof UNSET = UNSET;
 
   return function getEnvConfig(): z.infer<TSchema> {
-    if (cached !== undefined) return cached;
+    if (cached !== UNSET) return cached as z.infer<TSchema>;
 
     const result = params.schema.safeParse(params.source);
     if (!result.success) {

@@ -1,27 +1,46 @@
 #!/usr/bin/env node
 /**
  * Backend-only writers (cron, webhooks, indexer, auth hooks) must not call a
- * bare `revalidateTag` for tags that browser-facing deployments read. That
- * only invalidates the calling process; peers keep serving stale data until
- * their own TTL expires.
+ * bare `revalidateTag`. That only invalidates the calling process; peer
+ * deployments keep serving stale data until their own TTL expires.
  *
  * Those call sites must go through the cross-app publisher instead. A
- * deliberate exception is allowed with a same-line comment:
+ * deliberate exception is allowed with a comment on the call line or the line
+ * immediately above it:
  *
  *   await invalidateAppTags([...]); // allow:invalidateAppTags — reason
  *
- * Usage: node scripts/check-no-bare-revalidate.mjs [srcDir] [tagRegistryName]
+ * Deliberately flags EVERY bare `revalidateTag` in a backend-writer path,
+ * rather than only those naming a tag registry on the same line. Requiring
+ * both tokens on one line misses the two most common real forms:
+ *
+ *   const tag = APP_TAGS.userInbox(userId);
+ *   revalidateTag(tag);                     // variable indirection
+ *
+ *   revalidateTag(
+ *     APP_TAGS.orgFeed(userId),             // multi-line call
+ *   );
+ *
+ * Usage: node scripts/check-no-bare-revalidate.mjs [srcDir]
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join, relative, resolve } from "node:path";
 
 const srcDir = resolve(process.argv[2] ?? "src");
-const registryName = process.argv[3] ?? "APP_TAGS";
 const SCANNED_EXTENSIONS = new Set([".ts", ".tsx"]);
 const ALLOW_COMMENT = /\/\/\s*allow:/;
+const REVALIDATE_CALL = /\brevalidateTag\s*\(/;
 
 /** Directories whose writers cannot reach browser deployments any other way. */
 const BACKEND_WRITER_PATHS = ["/cron/", "/webhooks/", "/indexer/", "/lib/auth/"];
+
+if (!existsSync(srcDir)) {
+  console.error(
+    `Cache invalidation check failed: source directory not found at ${srcDir}\n` +
+      `Pass the correct path: node check-no-bare-revalidate.mjs <srcDir>`,
+  );
+  process.exit(1);
+}
 
 function walk(dir, files = []) {
   let entries;
@@ -40,6 +59,7 @@ function walk(dir, files = []) {
 }
 
 const failures = [];
+let scannedFiles = 0;
 
 for (const file of walk(srcDir)) {
   const normalized = file.split("\\").join("/");
@@ -47,15 +67,18 @@ for (const file of walk(srcDir)) {
     normalized.includes(path),
   );
   if (!isBackendWriter) continue;
+  scannedFiles += 1;
 
   const lines = readFileSync(file, "utf-8").split("\n");
   lines.forEach((line, index) => {
-    if (!/\brevalidateTag\s*\(/.test(line)) return;
+    if (!REVALIDATE_CALL.test(line)) return;
+    // Accept the escape hatch on the call line or the line directly above, so
+    // a multi-line call can carry its justification on the opening line.
     if (ALLOW_COMMENT.test(line)) return;
-    if (!line.includes(registryName)) return;
+    if (index > 0 && ALLOW_COMMENT.test(lines[index - 1] ?? "")) return;
 
     failures.push(
-      `${relative(process.cwd(), file)}:${index + 1} — bare revalidateTag on a shared tag in a backend-only writer; use the cross-app publisher or add a same-line "// allow:" comment with a reason`,
+      `${relative(process.cwd(), file)}:${index + 1} — bare revalidateTag in a backend-only writer; use the cross-app publisher, or add an "// allow:" comment with a reason`,
     );
   });
 }
@@ -66,4 +89,6 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log("Cache invalidation check passed");
+console.log(
+  `Cache invalidation check passed (${scannedFiles} backend-writer file(s) scanned)`,
+);

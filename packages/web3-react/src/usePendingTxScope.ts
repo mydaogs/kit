@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { buildPendingTxConflictKey } from "./vocabulary";
 import type {
   PendingTxScopeItem,
@@ -11,29 +11,46 @@ import type {
 
 export interface PendingTxScopeSelection {
   /** Entity ids with any non-terminal entry, for badge rendering. */
-  pendingEntityIds: Set<string>;
+  readonly pendingEntityIds: ReadonlySet<string>;
   /** All visible entries, including terminal warnings. */
-  entries: TxSyncEntry[];
+  readonly entries: readonly TxSyncEntry[];
   /**
    * Blocking entry per `entityId:conflictKey`. Present means every control
    * sharing that conflict key must be disabled.
    */
-  blockingEntryByConflictKey: Map<string, TxSyncEntry>;
+  readonly blockingEntryByConflictKey: ReadonlyMap<string, TxSyncEntry>;
   /**
    * Blocking entry per exact `actionKey`. Present means *this* control was the
    * originator and should show its own loading state.
    */
-  blockingEntryByActionKey: Map<string, TxSyncEntry>;
+  readonly blockingEntryByActionKey: ReadonlyMap<string, TxSyncEntry>;
 }
 
 const EMPTY_STORE: TxSyncStore = {};
 const getServerSnapshot = (): TxSyncStore => EMPTY_STORE;
 
-const EMPTY_SELECTION: PendingTxScopeSelection = {
-  pendingEntityIds: new Set(),
-  entries: [],
-  blockingEntryByConflictKey: new Map(),
-  blockingEntryByActionKey: new Map(),
+// Frozen so a consumer cannot mutate the shared empty result in place.
+const EMPTY_SELECTION: PendingTxScopeSelection = Object.freeze({
+  pendingEntityIds: Object.freeze(new Set<string>()) as ReadonlySet<string>,
+  entries: Object.freeze([]) as readonly TxSyncEntry[],
+  blockingEntryByConflictKey: Object.freeze(
+    new Map<string, TxSyncEntry>(),
+  ) as ReadonlyMap<string, TxSyncEntry>,
+  blockingEntryByActionKey: Object.freeze(
+    new Map<string, TxSyncEntry>(),
+  ) as ReadonlyMap<string, TxSyncEntry>,
+});
+
+const sameAddress = (
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean => {
+  if (!a || !b) return false;
+  // Wallet libraries return EIP-55 checksummed addresses, but the persisted
+  // value may have been written by a different build or a different casing
+  // convention. A case-sensitive compare silently drops the entry, leaving a
+  // control enabled while its transaction is still in flight.
+  return a.toLowerCase() === b.toLowerCase();
 };
 
 /**
@@ -50,9 +67,15 @@ const EMPTY_SELECTION: PendingTxScopeSelection = {
 export function createUsePendingTxScope(storage: TxSyncStorage) {
   return function usePendingTxScope(params?: {
     /**
-     * Restrict to entries submitted by this account. Pass `undefined` while a
-     * wallet is reconnecting — every account is admitted until the address
-     * settles, so a control does not flicker back to enabled mid-reconnect.
+     * Whose entries to admit.
+     *
+     * - `undefined` — address not yet known (wallet reconnecting). Admits
+     *   everything, so a control does not flicker back to enabled mid-reconnect
+     * - `null` — explicitly disconnected. Admits only entries that were
+     *   themselves recorded without an account, so a disconnected visitor never
+     *   observes another wallet's pending state on a shared browser
+     * - an address — admits entries recorded without an account, plus entries
+     *   matching case-insensitively
      */
     account?: `0x${string}` | null;
   }): PendingTxScopeSelection {
@@ -63,40 +86,55 @@ export function createUsePendingTxScope(storage: TxSyncStorage) {
       getServerSnapshot,
     );
 
-    const entries = Object.values(store);
-    if (entries.length === 0) return EMPTY_SELECTION;
-
     const account = params?.account;
-    const pendingEntityIds = new Set<string>();
-    const blockingEntryByConflictKey = new Map<string, TxSyncEntry>();
-    const blockingEntryByActionKey = new Map<string, TxSyncEntry>();
-    const visible: TxSyncEntry[] = [];
 
-    for (const entry of entries) {
-      // `account === undefined` means "not yet known" and admits everything.
-      // `null` means explicitly disconnected and also admits everything, so a
-      // reload before reconnect still restores blocking state.
-      if (account && entry.account && entry.account !== account) continue;
+    return useMemo<PendingTxScopeSelection>(() => {
+      const allEntries = Object.values(store);
+      if (allEntries.length === 0) return EMPTY_SELECTION;
 
-      visible.push(entry);
-      const isBlocking = entry.phase === "pending" || entry.phase === "reconciling";
+      const pendingEntityIds = new Set<string>();
+      const blockingEntryByConflictKey = new Map<string, TxSyncEntry>();
+      const blockingEntryByActionKey = new Map<string, TxSyncEntry>();
+      const visible: TxSyncEntry[] = [];
 
-      for (const item of entry.pendingItems as readonly PendingTxScopeItem[]) {
-        if (!isBlocking) continue;
-        pendingEntityIds.add(item.entityId);
-        blockingEntryByConflictKey.set(
-          buildPendingTxConflictKey(item.entityId, item.conflictKey),
-          entry,
-        );
-        blockingEntryByActionKey.set(item.actionKey, entry);
+      const admits = (entry: TxSyncEntry): boolean => {
+        if (account === undefined) return true;
+        if (entry.account === null) return true;
+        if (account === null) return false;
+        return sameAddress(entry.account, account);
+      };
+
+      for (const entry of allEntries) {
+        if (!admits(entry)) continue;
+        visible.push(entry);
       }
-    }
 
-    return {
-      pendingEntityIds,
-      entries: visible,
-      blockingEntryByConflictKey,
-      blockingEntryByActionKey,
-    };
+      // Newest last, so a later write wins the per-key slot deterministically.
+      // Without this the winner depends on object key order, which makes an
+      // older superseded entry able to keep a control disabled indefinitely.
+      const ordered = [...visible].sort((a, b) => a.timestamp - b.timestamp);
+
+      for (const entry of ordered) {
+        const isBlocking =
+          entry.phase === "pending" || entry.phase === "reconciling";
+        if (!isBlocking) continue;
+
+        for (const item of entry.pendingItems as readonly PendingTxScopeItem[]) {
+          pendingEntityIds.add(item.entityId);
+          blockingEntryByConflictKey.set(
+            buildPendingTxConflictKey(item.entityId, item.conflictKey),
+            entry,
+          );
+          blockingEntryByActionKey.set(item.actionKey, entry);
+        }
+      }
+
+      return {
+        pendingEntityIds,
+        entries: visible,
+        blockingEntryByConflictKey,
+        blockingEntryByActionKey,
+      };
+    }, [store, account]);
   };
 }

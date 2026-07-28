@@ -32,7 +32,7 @@ Three boundaries are deliberate and should not be collapsed:
 ```bash
 cd shared-packages
 pnpm install
-pnpm check     # typecheck all packages, run behavioral smoke tests, run CI guards
+pnpm check     # typecheck + lint all packages, run behavioral and regression tests
 ```
 
 ## Consuming
@@ -95,21 +95,46 @@ These are the non-obvious properties. Changing them silently breaks correctness 
 - **Status gaps never dead-letter.** They resolve once the missing intermediate event lands; an attempt cap would strand a recoverable projection
 - **Cache-tag state is cleared wholesale when any tag is dropped.** Soft tags are passed at read time and not recorded on the entry, so dependents cannot be identified individually
 - **The public fetch lane is enforced at runtime**, not documented. It throws on bodies, non-GET methods, credential overrides, and custom headers, so it cannot drift into sending cookies or triggering a preflight
+- **The credentialed fetcher pins its origin.** An absolute URL to any other host is refused, because `credentials: "include"` would otherwise forward the session cookie wherever a caller names
+- **Storage keys are materialized before any entry is read.** `readEntry` purges invalid records, and `Storage.key(i)` is a live index — deleting mid-scan shifts later keys down and skips them, hiding a pending transaction from the watcher entirely
+- **External query roots are admitted by predicate, not by root name.** A root allowlist cannot express a partial carve-out, and a wallet library's `readContract` root covers both harmless chain reads and viewer-scoped financial ones
 
 ## Verification
 
 `pnpm check` runs three things:
 
 - `check-types` — all 8 packages under `strict` with `noUncheckedIndexedAccess`
-- `verify` — [`scripts/smoke.ts`](scripts/smoke.ts), behavioral assertions over the pure logic: bigint round-trip fidelity (including that look-alike strings survive), error-envelope code preservation and message sanitization, redaction leaking nothing, public-path rejection, backoff dead-lettering vs status-gap persistence, ordering watermarks, failure classification, sync recovery posture per status code, chain-scoped event hashing, and tag partitioning
-- `check:cache-handlers` — the CI guard, runnable against a consuming repo
+- `lint` — eslint flat config across every package and script, `--max-warnings 0`
+- `verify` — behavioral assertions over the pure logic:
+  - [`scripts/smoke.ts`](scripts/smoke.ts) — bigint round-trip fidelity (including that look-alike strings survive), error-envelope code preservation and message sanitization, redaction leaking nothing, public-path rejection, backoff dead-lettering vs status-gap persistence, ordering watermarks, failure classification, sync recovery posture per status code, chain-scoped event hashing, tag partitioning, plus a regression block pinning every bug found in review
+  - [`scripts/smoke-dom.ts`](scripts/smoke-dom.ts) — storage-layer regressions against a fake `localStorage`: a stale record must not hide the record that follows it, and an unrecognized vocabulary must be rejected and purged rather than repaired
+
+The CI guards are **not** part of `pnpm check`. They target a consuming repo and now exit non-zero when handed a path with nothing to scan, so running them against this workspace correctly fails:
+
+```bash
+pnpm check:cache-handlers ../motherhunt-monorepo/apps
+pnpm check:bare-revalidate ../motherhunt-monorepo/apps/backend/src
+```
 
 ## CI guards
 
 [`scripts/`](scripts/) carries two guards to copy into a consuming repo. The pattern matters more than the specific checks: an architectural invariant encoded as a script is worth more than one written in a doc
 
 - `check-cache-handlers.mjs` — every `cacheComponents` app registers the handler *and* traces it in `outputFileTracingIncludes`
-- `check-no-bare-revalidate.mjs` — backend-only writers do not call bare `revalidateTag` on shared tags, with a same-line `// allow:` escape hatch
+- `check-no-bare-revalidate.mjs` — backend-only writers do not call bare `revalidateTag`, with an `// allow:` escape hatch on the call line or the line above
+
+Both fail loudly when they scan zero files. A guard that cannot distinguish "no violations" from "scanned nothing" reports success forever after a directory move — which is its own failure mode, and the first thing to check when one of these goes green unexpectedly.
+
+`check-no-bare-revalidate` flags **every** bare `revalidateTag` in a backend-writer path rather than only those naming a tag registry on the same line, because the two most common real forms span lines:
+
+```ts
+const tag = APP_TAGS.userInbox(userId);
+revalidateTag(tag);                     // variable indirection
+
+revalidateTag(
+  APP_TAGS.orgFeed(userId),             // multi-line call
+);
+```
 
 ## Relationship to the app packages
 

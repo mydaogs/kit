@@ -1,6 +1,6 @@
 export interface TruncateStringProps {
   value: string;
-  /** Characters kept at the start, after any 0x prefix. */
+  /** Characters kept at the start, counted from index 0 (a `0x` prefix is included). */
   leading?: number;
   /** Characters kept at the end. */
   trailing?: number;

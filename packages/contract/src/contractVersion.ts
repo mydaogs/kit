@@ -16,14 +16,21 @@ export class BackendContractMismatchError extends Error {
 
 export function isBackendHealthResponse(
   value: unknown,
+  expectedApp?: string,
 ): value is BackendHealthResponse {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Record<string, unknown>;
-  return (
-    typeof candidate.status === "string" &&
-    typeof candidate.app === "string" &&
-    typeof candidate.contractVersion === "string"
-  );
+  if (
+    typeof candidate.status !== "string" ||
+    typeof candidate.app !== "string" ||
+    typeof candidate.contractVersion !== "string"
+  ) {
+    return false;
+  }
+  // Without this, the probe accepts any service that happens to expose a
+  // `contractVersion` — a misrouted origin passes the gate silently.
+  if (expectedApp !== undefined && candidate.app !== expectedApp) return false;
+  return true;
 }
 
 /**
@@ -40,6 +47,11 @@ export function isBackendHealthResponse(
 export function createContractVerifier(options: {
   expectedVersion: string;
   healthUrl: () => string;
+  /**
+   * Asserted against the probe's `app` field. Set it — a version string alone
+   * does not prove you reached the service you meant to reach.
+   */
+  expectedApp?: string;
   /** Gate so the probe only runs during a production build. */
   shouldVerify?: () => boolean;
 }) {
@@ -58,9 +70,9 @@ export function createContractVerifier(options: {
         body = null;
       }
 
-      if (!isBackendHealthResponse(body)) {
+      if (!isBackendHealthResponse(body, options.expectedApp)) {
         throw new Error(
-          `Backend health probe failed: ${res.status} ${res.statusText} (invalid or missing body)`,
+          `Backend health probe failed: ${res.status} ${res.statusText} (invalid body, or not the expected app)`,
         );
       }
 

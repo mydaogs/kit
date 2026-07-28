@@ -7,8 +7,15 @@ export type TxSyncQueryKey = string | string[] | readonly unknown[];
 export interface PendingTxScopeItem {
   entityType: string;
   entityId: string;
+  /** Disables every control sharing this key on this entity. */
   conflictKey: string;
+  /** Identifies the originating control, so only it restores its spinner. */
   actionKey: string;
+  /**
+   * Opaque pass-through metadata for the consumer. The selector does not
+   * interpret it — per-conflict-key precedence is resolved by entry
+   * `timestamp` (newest wins), not by variant.
+   */
   variant?: string;
 }
 
@@ -198,19 +205,35 @@ export function createTxSyncStorage(params: {
     }
   };
 
-  const readStore = (): TxSyncStore => {
-    if (!hasStorage()) return {};
-    const store: TxSyncStore = {};
+  /**
+   * Materializes the key list BEFORE reading any entry.
+   *
+   * `readEntry` deletes expired or invalid records, and `Storage.key(i)` is a
+   * live index into the store. Deleting mid-iteration shifts every later key
+   * down one slot, so `i++` then skips the next record — a single stale entry
+   * would make the following pending transaction invisible to the watcher: no
+   * reconciliation, no toast, and a record that never settles.
+   */
+  const getEntryStorageKeys = (): string[] => {
+    const keys: string[] = [];
     try {
       for (let i = 0; i < window.localStorage.length; i++) {
         const key = window.localStorage.key(i);
-        if (!key?.startsWith(STORAGE_PREFIX)) continue;
-        const txHash = key.slice(STORAGE_PREFIX.length);
-        const entry = readEntry(txHash);
-        if (entry) store[txHash] = entry;
+        if (key?.startsWith(STORAGE_PREFIX)) keys.push(key);
       }
     } catch {
-      return store;
+      return keys;
+    }
+    return keys;
+  };
+
+  const readStore = (): TxSyncStore => {
+    if (!hasStorage()) return {};
+    const store: TxSyncStore = {};
+    for (const key of getEntryStorageKeys()) {
+      const txHash = key.slice(STORAGE_PREFIX.length);
+      const entry = readEntry(txHash);
+      if (entry) store[txHash] = entry;
     }
     return store;
   };

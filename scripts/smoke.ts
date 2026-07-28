@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { bigIntStringify, bigIntParse, toBigInt, buildDynamicRoutePath, truncateString } from "@kit/core";
-import { createActionResponse, AppBusinessError, redact, isVisible, createPublicPathValidator } from "@kit/contract";
+import {
+  createActionResponse,
+  AppBusinessError,
+  redact,
+  isVisible,
+  createPublicPathValidator,
+  createBackendFetch,
+  isBackendHealthResponse,
+  setGenericErrorMessage,
+} from "@kit/contract";
 import { computeRetryAt, computeStatusGapRetryAt, isNewerChainEvent, classifyProjectionFailure, StatusProjectionGapError, QuarantineProjectionError, computeEventHash } from "@kit/indexer";
 import { getSyncRecoveryAction } from "../packages/web3-react/src/reconcile.ts";
 import { partitionTags, dedupeTags } from "@kit/cache-handler";
@@ -79,3 +88,52 @@ assert.deepEqual(internal, ["user:u1:inbox"]);
 assert.deepEqual(dedupeTags(["a", "a", "b"]), ["a", "b"]);
 
 console.log("all smoke assertions passed");
+
+// ── Regression assertions ────────────────────────────────────────────────
+// Each of these pins a bug that was found in review. They fail loudly if the
+// behaviour ever regresses.
+
+// buildDynamicRoutePath: `$` sequences must be literal, not replacement patterns
+assert.equal(buildDynamicRoutePath("/u/[id]", { id: "a$&b" }), "/u/a$&b");
+assert.equal(buildDynamicRoutePath("/u/[id]/x", { id: "a$'b" }), "/u/a$'b/x");
+assert.equal(buildDynamicRoutePath("/u/[id]", { id: "a$`b" }), "/u/a$`b");
+assert.equal(buildDynamicRoutePath("/u/[id]", { id: "a$1b" }), "/u/a$1b");
+// catch-all segment names contain regex metacharacters
+assert.equal(buildDynamicRoutePath("/u/[...slug]", { "...slug": "a/b" }), "/u/a/b");
+// opt-in encoding contains a traversal attempt to one segment
+assert.equal(
+  buildDynamicRoutePath("/u/[id]", { id: "a/../admin" }, { encode: true }),
+  "/u/a%2F..%2Fadmin",
+);
+
+// credentialed fetch must refuse a foreign absolute URL
+{
+  const { backendFetch } = createBackendFetch({
+    getOrigin: () => "https://api.example.com",
+    publicPaths: ["/public-data/x"] as const,
+  });
+  await assert.rejects(
+    () => backendFetch("https://evil.example/steal"),
+    /Refusing to send a credentialed request/,
+  );
+}
+
+// health probe must reject a different app exposing a contractVersion
+assert.equal(
+  isBackendHealthResponse({ status: "ok", app: "other", contractVersion: "v1" }, "backend"),
+  false,
+);
+assert.equal(
+  isBackendHealthResponse({ status: "ok", app: "backend", contractVersion: "v1" }, "backend"),
+  true,
+);
+
+// generic error message is injectable rather than hardcoded English
+setGenericErrorMessage("Une erreur est survenue.");
+assert.equal(
+  createActionResponse({ error: new Error("leak") }).errorMessage,
+  "Une erreur est survenue.",
+);
+setGenericErrorMessage("A server error has occurred.");
+
+console.log("all regression assertions passed");

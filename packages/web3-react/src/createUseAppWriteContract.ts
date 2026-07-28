@@ -85,6 +85,16 @@ export function createUseAppWriteContract(deps: CreateUseAppWriteContractDeps) {
   const { storage, toast, messages, getExplorerTxUrl, syncTxHash, sessionQueryKey } = deps;
 
   return function useAppWriteContract(props?: UseAppWriteContractProps) {
+    // Silently falling back to invalidate-only would persist a record claiming
+    // `reconciliationMode: "backend-sync"` that no watcher can ever satisfy,
+    // and projected reads would stay stale behind indexer latency with no
+    // signal. Fail at the call site instead.
+    if (props?.syncTxBeforeInvalidate && !syncTxHash) {
+      throw new Error(
+        "useAppWriteContract: syncTxBeforeInvalidate requires a `syncTxHash` dependency on createUseAppWriteContract",
+      );
+    }
+
     const queryClient = useQueryClient();
     const { address } = useAccount();
     const {

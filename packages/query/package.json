@@ -4,15 +4,21 @@
   "type": "module",
   "description": "TanStack Query conventions: cache tiers, fetch factories, fail-closed identity-scoped cache reset",
   "sideEffects": false,
-  "exports": { ".": "./src/index.ts" },
-  "files": ["src"],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src"
+  ],
   "scripts": {
     "check-types": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint src --max-warnings 0"
   },
   "peerDependencies": {
     "@tanstack/react-query": "^5.0.0",
     "react": "^18.0.0 || ^19.0.0"
   },
-  "devDependencies": { "typescript": "^5.7.3" }
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
 }

@@ -24,6 +24,9 @@ export interface QueryPersister {
  * Returns whether the cache has settled for the current identity. Authenticated
  * observers should wait on this before issuing requests, otherwise a query can
  * start and be immediately removed by the same transition.
+ *
+ * `removeOptions` is read from a ref, so an inline object literal at the call
+ * site does not retrigger the effect on every render.
  */
 export function useResetCacheOnIdentityChange(params: {
   queryClient: QueryClient;
@@ -38,6 +41,8 @@ export function useResetCacheOnIdentityChange(params: {
   const [settledIdentity, setSettledIdentity] = useState<string | null>(null);
   const prevIdentityRef = useRef<string | null>(null);
   const hasBaselineRef = useRef(false);
+  const removeOptionsRef = useRef(removeOptions);
+  removeOptionsRef.current = removeOptions;
 
   useEffect(() => {
     if (isPending) return;
@@ -51,11 +56,11 @@ export function useResetCacheOnIdentityChange(params: {
 
     if (identity !== prevIdentityRef.current) {
       prevIdentityRef.current = identity;
-      removeIdentityScopedQueries(queryClient, removeOptions);
+      removeIdentityScopedQueries(queryClient, removeOptionsRef.current);
       void persister.removeClient();
       setSettledIdentity(identity);
     }
-  }, [identity, isPending, persister, queryClient, removeOptions]);
+  }, [identity, isPending, persister, queryClient]);
 
   return !isPending && hasBaselineRef.current && settledIdentity === identity;
 }

@@ -3,6 +3,7 @@ export {
   formatErrorMessage,
   formatErrorStatusCode,
   actionErrorToThrowable,
+  setGenericErrorMessage,
 } from "./errors";
 export type {
   ApiResponse,
@@ -25,5 +26,6 @@ export type { BackendHealthResponse } from "./contractVersion";
 export { createBackendFetch } from "./createBackendFetch";
 export type {
   BackendFetchInit,
+  BackendFetchMessages,
   CreateBackendFetchOptions,
 } from "./createBackendFetch";

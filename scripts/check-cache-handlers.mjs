@@ -19,7 +19,13 @@ function listAppDirs() {
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name);
   } catch {
-    return [];
+    // A guard that cannot distinguish "no violations" from "scanned nothing"
+    // reports success forever after a directory move. Fail loudly instead.
+    console.error(
+      `Cache handler check failed: apps directory not found at ${appsDir}\n` +
+        `Pass the correct path: node check-cache-handlers.mjs <appsDir>`,
+    );
+    process.exit(1);
   }
 }
 
@@ -35,12 +41,14 @@ function readConfig(appName) {
 }
 
 const failures = [];
+let scannedApps = 0;
 
 for (const appName of listAppDirs()) {
   if (EXEMPT_APPS.has(appName)) continue;
 
   const config = readConfig(appName);
   if (!config) continue;
+  scannedApps += 1;
 
   const usesCacheComponents = /cacheComponents\s*:\s*true/.test(config);
   if (!usesCacheComponents) continue;
@@ -67,4 +75,11 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log("Cache handler check passed");
+if (scannedApps === 0) {
+  console.error(
+    `Cache handler check failed: found no app with a next.config under ${appsDir}`,
+  );
+  process.exit(1);
+}
+
+console.log(`Cache handler check passed (${scannedApps} app(s) scanned)`);

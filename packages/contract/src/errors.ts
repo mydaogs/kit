@@ -38,14 +38,27 @@ export class AppBusinessError<TCode extends string = string> extends Error {
 }
 
 /**
- * Collapses anything unexpected to a generic string. Only deliberate business
- * and auth errors keep their message — that is what makes the resulting
- * `errorMessage` safe to put on the wire.
+ * Fallback used when an error is not a deliberate business/auth failure.
+ *
+ * English by default because this package has no i18n dependency. Override it
+ * once at startup if the string can reach the UI — it travels to the client
+ * through the action envelope.
+ */
+let genericErrorMessage = "A server error has occurred.";
+
+export const setGenericErrorMessage = (message: string): void => {
+  genericErrorMessage = message;
+};
+
+/**
+ * Collapses anything unexpected to the generic string. Only deliberate
+ * business and auth errors keep their message — that is what makes the
+ * resulting `errorMessage` safe to put on the wire.
  */
 export const formatErrorMessage = (error: unknown): string =>
   error instanceof AppBusinessError || error instanceof APIError
     ? error.message
-    : "A server error has occurred.";
+    : genericErrorMessage;
 
 export const formatErrorStatusCode = (error: unknown): number => {
   if (error instanceof APIError) {

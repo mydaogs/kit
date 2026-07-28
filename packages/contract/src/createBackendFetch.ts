@@ -12,16 +12,30 @@ export interface BackendFetchInit extends Omit<RequestInit, "body" | "headers"> 
   cacheTags?: string[] | ((data: unknown) => string[]);
 }
 
-export interface CreateBackendFetchOptions<
-  TPaths extends readonly string[],
-  TCode extends string = string,
-> {
+export interface BackendFetchMessages {
+  /** Shown for a 429. Receives the parsed `Retry-After` seconds, if present. */
+  tooManyRequests: (retryAfterSeconds: string | null) => string;
+}
+
+const DEFAULT_MESSAGES: BackendFetchMessages = {
+  tooManyRequests: (retryAfterSeconds) =>
+    retryAfterSeconds
+      ? `Too many requests. Retry after ${retryAfterSeconds} second(s).`
+      : "Too many requests.",
+};
+
+export interface CreateBackendFetchOptions<TPaths extends readonly string[]> {
   /** Origin of the backend service. Throws when unset rather than guessing. */
   getOrigin: () => string;
   /** Allowlisted GET-only, credential-free paths. */
   publicPaths: TPaths;
   /** Build-time contract probe from `createContractVerifier`. */
   verifyContract?: () => Promise<void>;
+  /**
+   * Copy for errors this layer raises itself. Supply localized strings — the
+   * defaults are English and reach the UI through the action envelope.
+   */
+  messages?: BackendFetchMessages;
 }
 
 const isJsonSerializableBody = (
@@ -35,9 +49,9 @@ const isJsonSerializableBody = (
   !(body instanceof ArrayBuffer) &&
   !ArrayBuffer.isView(body);
 
-const parseApiResponse = async <T, TCode extends string>(
+const parseApiResponse = async <T>(
   res: Response,
-): Promise<ApiResponse<T, TCode> | null> => {
+): Promise<ApiResponse<T> | null> => {
   try {
     const text = await res.text();
     if (!text) return null;
@@ -50,26 +64,24 @@ const parseApiResponse = async <T, TCode extends string>(
       return null;
     }
 
-    return payload as ApiResponse<T, TCode>;
+    return payload as ApiResponse<T>;
   } catch {
     return null;
   }
 };
 
-const getRequestError = <T, TCode extends string>(params: {
+const getRequestError = <T>(params: {
   res: Response;
-  response: ApiResponse<T, TCode> | null;
+  response: ApiResponse<T> | null;
+  messages: BackendFetchMessages;
 }): Error => {
-  const { res, response } = params;
+  const { res, response, messages } = params;
 
   if (res.status === 429) {
     const retryAfter =
       res.headers.get("Retry-After") ?? res.headers.get("X-Retry-After");
-    const retrySuffix = retryAfter
-      ? ` Retry after ${retryAfter} second(s).`
-      : "";
     return new AppBusinessError(
-      `Too many requests.${retrySuffix}`,
+      messages.tooManyRequests(retryAfter),
       429,
       "TOO_MANY_REQUESTS",
     );
@@ -98,16 +110,33 @@ const getRequestError = <T, TCode extends string>(params: {
  * methods, credential overrides, and custom headers, so it can never drift
  * into sending cookies or triggering a CORS preflight.
  */
-export function createBackendFetch<
-  const TPaths extends readonly string[],
-  TCode extends string = string,
->(options: CreateBackendFetchOptions<TPaths, TCode>) {
+export function createBackendFetch<const TPaths extends readonly string[]>(
+  options: CreateBackendFetchOptions<TPaths>,
+) {
   const validatePublicPath = createPublicPathValidator(options.publicPaths);
+  const messages = options.messages ?? DEFAULT_MESSAGES;
 
+  /**
+   * Absolute URLs are pinned to the configured origin.
+   *
+   * The credentialed fetcher sends `credentials: "include"`, so accepting an
+   * arbitrary absolute URL would forward the session cookie to any host a
+   * caller can name — the exact hazard the public lane is hardened against.
+   */
   const buildUrl = (pathname: string): string => {
     const origin = options.getOrigin();
     if (!origin) throw new Error("Backend origin is not configured");
-    if (/^https?:\/\//.test(pathname)) return pathname;
+
+    if (/^https?:\/\//.test(pathname)) {
+      const target = new URL(pathname);
+      if (target.origin !== new URL(origin).origin) {
+        throw new Error(
+          `Refusing to send a credentialed request to ${target.origin}; configured backend origin is ${new URL(origin).origin}`,
+        );
+      }
+      return target.toString();
+    }
+
     return new URL(pathname, origin).toString();
   };
 
@@ -136,9 +165,9 @@ export function createBackendFetch<
       headers,
     });
 
-    const response = await parseApiResponse<T, TCode>(res);
+    const response = await parseApiResponse<T>(res);
     if (!response || !res.ok || !response.success) {
-      throw getRequestError({ res, response });
+      throw getRequestError({ res, response, messages });
     }
 
     if (response.cacheTags?.length) {

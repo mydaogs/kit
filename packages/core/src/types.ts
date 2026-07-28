@@ -7,7 +7,6 @@ export type ValueOf<T extends object> = T[keyof T];
  * which is what makes `buildDynamicRoutePath` compile-time checked.
  */
 export type ExtractPathParams<Path extends string> =
-  /* eslint-disable @typescript-eslint/no-unused-vars */
   Path extends `${infer _Start}[${infer Param}]${infer Rest}`
     ? Param | ExtractPathParams<Rest>
     : never;

@@ -58,8 +58,24 @@ export interface EventLedger {
     /** `null` writes a dead letter that the claim query stops selecting. */
     nextRetryAt: Date | null;
     outcomeCode?: ProjectionOutcomeCode | null;
+    /**
+     * Tags the handler requested before the failure. Persist these.
+     *
+     * A handler that succeeded but whose tag publish failed must be able to
+     * re-emit on replay. Handlers are idempotent, so the replay's second run
+     * commonly short-circuits ("already applied") and requests no tags at all —
+     * at which point the only surviving copy of the manifest is this one.
+     */
+    cacheTagsToInvalidate?: string[];
   }): Promise<void>;
 
+  /**
+   * Attempts made so far, used to compute the next backoff interval.
+   *
+   * **Contract: `claim` increments this before the handler runs**, so a first
+   * attempt reports `1` here, not `0`. Implementations that increment on
+   * failure instead will be off by one and the effective retry budget shifts.
+   */
   getAttemptCount(eventHash: `0x${string}`): Promise<number>;
 }
 
@@ -176,8 +192,10 @@ export function createEventProcessor<TLog extends EventLog>(
       await handler(log, ctx);
 
       const tags = [...requestedTags];
-      // Publish BEFORE finalizing: if this throws, the ledger stays failed and
-      // the next replay re-emits the persisted manifest.
+      // Publish BEFORE finalizing. A publish failure must not mark the event
+      // processed, or the invalidation is lost with nothing left to retry —
+      // so it falls through to the catch below, which persists the manifest
+      // alongside the failure for the replay to re-emit.
       if (tags.length > 0 && publishCacheTags) {
         await publishCacheTags(tags);
       }
@@ -217,6 +235,10 @@ export function createEventProcessor<TLog extends EventLog>(
         nextRetryAt,
         outcomeCode:
           nextRetryAt === null ? PROJECTION_OUTCOME.DEAD_LETTER : classified.outcomeCode,
+        // Carries a manifest requested before the throw, so a publish failure
+        // can be re-emitted on replay even if the idempotent second run
+        // requests nothing.
+        cacheTagsToInvalidate: [...requestedTags],
       });
 
       return {
