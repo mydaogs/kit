@@ -1,0 +1,16 @@
+{
+  "name": "@kit/contract",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Versioned backend wire contract: response envelope, error catalog, credential-free public lane, build-time version probe",
+  "sideEffects": false,
+  "exports": { ".": "./src/index.ts" },
+  "files": ["src"],
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "check:contract-hygiene": "! grep -rnE '@kit/(kv|cache-handler|indexer)|prisma' src/ 2>/dev/null",
+    "lint": "eslint ."
+  },
+  "dependencies": { "@kit/core": "workspace:*" },
+  "devDependencies": { "typescript": "^5.7.3" }
+}

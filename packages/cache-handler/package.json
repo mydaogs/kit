@@ -1,0 +1,15 @@
+{
+  "name": "@kit/cache-handler",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Distributed Next.js cache handler over a shared Redis tag store, plus a cross-app invalidation publisher",
+  "sideEffects": false,
+  "exports": { ".": "./src/index.ts" },
+  "files": ["src", "scripts"],
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "check:no-bare-specifiers": "! grep -rnE \"from \\\"@kit/\" src/ 2>/dev/null",
+    "lint": "eslint ."
+  },
+  "devDependencies": { "typescript": "^5.7.3" }
+}

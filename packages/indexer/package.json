@@ -1,0 +1,16 @@
+{
+  "name": "@kit/indexer",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Storage-agnostic onchain event projection: atomic claim, capped backoff, ordering watermarks, terminal-failure taxonomy",
+  "sideEffects": false,
+  "exports": { ".": "./src/index.ts" },
+  "files": ["src"],
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "peerDependencies": { "viem": "^2.0.0" },
+  "dependencies": { "@kit/core": "workspace:*" },
+  "devDependencies": { "typescript": "^5.7.3" }
+}

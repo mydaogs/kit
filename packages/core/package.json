@@ -1,0 +1,14 @@
+{
+  "name": "@kit/core",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Zero-dependency isomorphic primitives: bigint JSON wire protocol, typed route paths, type helpers",
+  "sideEffects": false,
+  "exports": { ".": "./src/index.ts" },
+  "files": ["src"],
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": { "typescript": "^5.7.3" }
+}
