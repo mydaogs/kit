@@ -12,7 +12,7 @@
     "verify": "tsx scripts/smoke.ts && tsx scripts/smoke-dom.ts",
     "check": "pnpm check-types && pnpm lint && pnpm verify && pnpm check-links",
     "check-links": "pnpm --filter @mydaogs/shared-docs check-links",
-    "compile": "pnpm -r compile"
+    "build": "pnpm -r build"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

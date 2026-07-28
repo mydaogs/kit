@@ -37,9 +37,9 @@ so there is no fork to keep in sync
 ## Install
 
 ```bash
-cd shared-packages
 pnpm install
 pnpm check     # typecheck + lint all packages, run behavioral and regression tests
+pnpm build     # emit dist/ for all 8 code packages
 ```
 
 ## Publishing
@@ -49,10 +49,10 @@ source for workspace consumers, while `publishConfig` substitutes compiled
 `dist/` output at publish time — so local development needs no build step and
 registry consumers get real JavaScript
 
-The compile script is named `compile`, not `build`, because this repository
-hard-rules against adding `build`/`start` scripts to any `package.json`. Rename
-it to `build` once the kit is extracted to its own repository, where that rule no
-longer applies
+A release is cut by pushing a tag. [`.github/workflows/release.yml`](.github/workflows/release.yml)
+runs `pnpm check` and `pnpm build`, then `npm publish --access public` for every
+package, and requires an `NPM_TOKEN` repository secret with publish rights on the
+`@mydaogs` scope
 
 ## Consuming
 
@@ -139,13 +139,14 @@ These are the non-obvious properties. Changing them silently breaks correctness 
 
 ## Verification
 
-`pnpm check` runs three things:
+`pnpm check` runs four things:
 
 - `check-types` — all 8 packages under `strict` with `noUncheckedIndexedAccess`
 - `lint` — eslint flat config across every package and script, `--max-warnings 0`
 - `verify` — behavioral assertions over the pure logic:
   - [`scripts/smoke.ts`](scripts/smoke.ts) — bigint round-trip fidelity (including that look-alike strings survive), error-envelope code preservation and message sanitization, redaction leaking nothing, public-path rejection, backoff dead-lettering vs status-gap persistence, ordering watermarks, failure classification, sync recovery posture per status code, chain-scoped event hashing, tag partitioning, plus a regression block pinning every bug found in review
   - [`scripts/smoke-dom.ts`](scripts/smoke-dom.ts) — storage-layer regressions against a fake `localStorage`: a stale record must not hide the record that follows it, and an unrecognized vocabulary must be rejected and purged rather than repaired
+- `check-links` — every relative markdown link across the docs resolves to a file that exists
 
 The CI guards are **not** part of `pnpm check`. They target a consuming repo and now exit non-zero when handed a path with nothing to scan, so running them against this workspace correctly fails:
 
@@ -174,14 +175,7 @@ revalidateTag(
 );
 ```
 
-## Extraction status
-
-This kit is destined for its own public repository. It is staged here so the
-restructure stays reviewable; the extraction itself is a subtree move with no
-rework:
-
-1. `git subtree split` / `filter-repo` this directory into `mydaogs/kit`
-2. Rename `compile` to `build` in each `package.json`
-3. Add a release workflow and publish `@mydaogs/*` to npm
-4. Replace `motherhunt-monorepo/packages/{cache-handler,kv}` with the published
-   packages, retiring the duplicated implementations
+Neither guard runs in this repository's CI, because both need a consuming repo to
+scan and would correctly fail against an empty one. [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+runs `pnpm check` and `pnpm build`; a consuming repo wires the guards at its own
+paths
