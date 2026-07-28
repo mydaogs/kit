@@ -22,6 +22,23 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
+      # The tag only triggers the release; package.json is the version of
+      # record. Without this gate a v0.2.0 tag over 0.1.0 manifests publishes
+      # 0.1.0 under a name that says otherwise, and npm makes that permanent
+      # after 72 hours. Fail before anything is uploaded, not after.
+      - name: Tag must match package versions
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          status=0
+          for f in packages/*/package.json; do
+            v=$(node -p "require('./$f').version")
+            if [ "$v" != "$tag" ]; then
+              echo "::error file=$f::$f is $v but the tag is $tag"
+              status=1
+            fi
+          done
+          [ $status -eq 0 ] && echo "all packages at $tag"
+          exit $status
       # A tag never publishes something that would not have passed a PR
       - run: pnpm check
       - run: pnpm build
