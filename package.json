@@ -1,0 +1,41 @@
+{
+  "name": "@mydaogs/workspace",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Portable package kit for Next.js + web3 projects",
+  "scripts": {
+    "check-types": "pnpm -r check-types",
+    "lint": "eslint packages/*/src scripts --max-warnings 0",
+    "check:cache-handlers": "node scripts/check-cache-handlers.mjs",
+    "check:bare-revalidate": "node scripts/check-no-bare-revalidate.mjs",
+    "verify": "tsx scripts/smoke.ts && tsx scripts/smoke-dom.ts",
+    "check": "pnpm check-types && pnpm lint && pnpm verify && pnpm check-links",
+    "check-links": "pnpm --filter @mydaogs/shared-docs check-links",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@tanstack/react-query": "5.62.0",
+    "@types/node": "^20.19.43",
+    "@types/react": "^19.2.17",
+    "@upstash/redis": "1.36.2",
+    "eslint": "^9.39.5",
+    "react": "^19.2.8",
+    "server-only": "0.0.1",
+    "tsx": "^4.23.1",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.65.0",
+    "viem": "2.21.0",
+    "wagmi": "2.14.0",
+    "zod": "3.24.0"
+  },
+  "dependencies": {
+    "@mydaogs/cache-handler": "workspace:*",
+    "@mydaogs/contract": "workspace:*",
+    "@mydaogs/core": "workspace:*",
+    "@mydaogs/indexer": "workspace:*",
+    "@mydaogs/query": "workspace:*",
+    "@mydaogs/web3": "workspace:*"
+  }
+}
