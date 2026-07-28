@@ -1,11 +1,11 @@
 {
-  "name": "@mydaogs/indexer",
+  "name": "@mydaogs/web3-tx",
   "version": "0.2.0",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mydaogs/kit.git",
-    "directory": "packages/indexer"
+    "directory": "packages/web3-tx"
   },
   "publishConfig": {
     "access": "public",
@@ -20,7 +20,7 @@
     }
   },
   "type": "module",
-  "description": "Storage-agnostic onchain event projection: atomic claim, capped backoff, ordering watermarks, terminal-failure taxonomy",
+  "description": "Durable pending-transaction registry: cross-tab ownership, reconciliation, and failure recovery, with no React in the graph",
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts"
@@ -36,14 +36,15 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "viem": "^2.0.0"
+    "@tanstack/react-query": "^5.0.0"
   },
   "dependencies": {
+    "@mydaogs/contract": "workspace:*",
     "@mydaogs/core": "workspace:*"
   },
   "devDependencies": {
+    "@tanstack/react-query": "5.62.0",
     "tsup": "^8.5.1",
-    "typescript": "^5.7.3",
-    "viem": "2.21.0"
+    "typescript": "^5.7.3"
   }
 }

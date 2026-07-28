@@ -59,8 +59,10 @@ Package names (`@shared/ui`, `@shared/db`, `@shared/backend-contract`, `@shared/
 | [`@mydaogs/contract`](../contract/README.md) | backend API contract, response wrapper, business error, server actions, backend extraction |
 | [`@mydaogs/cache-handler`](../cache-handler/README.md) | distributed cache handler decision, React cache pattern |
 | [`@mydaogs/query`](../query/README.md) | query integration, invalidation, error boundary, pagination rules |
+| [`@mydaogs/query-client`](../query-client/README.md) | identity-scoped cache reset hook |
 | [`@mydaogs/web3`](../web3/README.md) | wagmi integration, network config, env config split |
-| [`@mydaogs/web3-react`](../web3-react/README.md) | contract write wrapper, durable pending-tx sync, pending transactions, web3 buttons |
+| [`@mydaogs/web3-tx`](../web3-tx/README.md) | durable pending-tx sync, pending transactions |
+| [`@mydaogs/web3-client`](../web3-client/README.md) | contract write wrapper, web3 buttons |
 | [`@mydaogs/indexer`](../indexer/README.md) | event processing pipeline, contract lifecycle rules, database per environment |
 
 If a doc describes one package's behaviour, it belongs in that package. This package is for what does not fit that test

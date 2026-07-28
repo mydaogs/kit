@@ -22,6 +22,10 @@ jobs:
       - run: pnpm check
       # Publishable output must actually compile, not just typecheck
       - run: pnpm build
+      # ...and must actually load. typecheck + build together still let a
+      # completely unimportable package through, because nothing else here
+      # ever runs what was emitted. This packs, installs and imports each one.
+      - run: pnpm verify:dist
       # scripts/check-cache-handlers.mjs and scripts/check-no-bare-revalidate.mjs
       # deliberately do not run here. Both exit non-zero when they scan zero
       # files, and there is nothing in this repository for them to scan — they

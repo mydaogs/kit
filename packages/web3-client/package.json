@@ -1,11 +1,11 @@
 {
-  "name": "@mydaogs/web3-react",
+  "name": "@mydaogs/web3-client",
   "version": "0.2.0",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mydaogs/kit.git",
-    "directory": "packages/web3-react"
+    "directory": "packages/web3-client"
   },
   "publishConfig": {
     "access": "public",
@@ -20,7 +20,7 @@
     }
   },
   "type": "module",
-  "description": "Durable pending-transaction registry and contract-write wrapper with cross-tab ownership, phased toasts, and reconciliation",
+  "description": "React client layer for @mydaogs/web3-tx: contract-write wrapper and pending-transaction scope selector",
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts"
@@ -32,7 +32,7 @@
   "scripts": {
     "check-types": "tsc --noEmit",
     "lint": "eslint src --max-warnings 0",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsup",
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
@@ -42,11 +42,16 @@
     "wagmi": "^2.0.0"
   },
   "dependencies": {
-    "@mydaogs/contract": "workspace:*",
     "@mydaogs/core": "workspace:*",
-    "@mydaogs/web3": "workspace:*"
+    "@mydaogs/web3": "workspace:*",
+    "@mydaogs/web3-tx": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.7.3"
+    "@tanstack/react-query": "5.62.0",
+    "react": "^19.2.8",
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.3",
+    "viem": "2.21.0",
+    "wagmi": "2.14.0"
   }
 }

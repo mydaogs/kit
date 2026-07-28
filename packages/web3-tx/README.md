@@ -1,22 +1,22 @@
-# @mydaogs/web3-react
+# @mydaogs/web3-tx
 
 **Durable pending-transaction registry**
 
-The contract-write wrapper and the durable registry behind it: cross-tab ownership via Web Locks, phased toasts, receipt reconciliation with classified retry postures, and a pure selector for which controls must be disabled.
+The durable registry behind the contract-write wrapper: cross-tab ownership via Web Locks, receipt reconciliation with classified retry postures, and the transaction vocabulary.
+
+No React in the dependency graph — the hooks that consume this live in [`@mydaogs/web3-client`](../web3-client/README.md).
 
 ## Documentation
 
 These docs are the single source of truth for this package and ship with it:
 
-- [`ARCH-contract-write-wrapper.md`](./ARCH-contract-write-wrapper.md)
 - [`ARCH-durable-pending-tx-sync.md`](./ARCH-durable-pending-tx-sync.md)
 - [`ARCH-pending-transactions.md`](./ARCH-pending-transactions.md)
-- [`ARCH-web3-buttons.md`](./ARCH-web3-buttons.md)
 
 ## Install
 
 ```bash
-pnpm add @mydaogs/web3-react
+pnpm add @mydaogs/web3-tx
 ```
 
 Peer dependencies are listed in `package.json` and are deliberately not bundled

@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import { buildPendingTxConflictKey } from "./vocabulary";
+import { buildPendingTxConflictKey } from "@mydaogs/web3-tx";
 import type {
   PendingTxScopeItem,
   TxSyncEntry,
   TxSyncStorage,
   TxSyncStore,
-} from "./txSyncStorage";
+} from "@mydaogs/web3-tx";
 
 export interface PendingTxScopeSelection {
   /** Entity ids with any non-terminal entry, for badge rendering. */

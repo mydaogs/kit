@@ -6,9 +6,9 @@ import { useAccount, useTransactionReceipt, useWriteContract } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { truncateString } from "@mydaogs/core";
 import { resolveContractErrorMessage } from "@mydaogs/web3";
-import { reconcileConfirmedTransaction } from "./reconcile";
-import type { TxSyncStorage, NonEmptyPendingTxScopeItems, TxSyncQueryKey } from "./txSyncStorage";
-import type { TxMessages, TxToastAdapter } from "./toastAdapter";
+import { reconcileConfirmedTransaction } from "@mydaogs/web3-tx";
+import type { TxSyncStorage, NonEmptyPendingTxScopeItems, TxSyncQueryKey } from "@mydaogs/web3-tx";
+import type { TxMessages, TxToastAdapter } from "@mydaogs/web3-tx";
 
 export interface UseAppWriteContractProps {
   onTransactionSubmitted?: (params: { hash: `0x${string}` }) => void;

@@ -20,8 +20,8 @@ const storageBackend = new FakeStorage();
   addEventListener: () => {},
 };
 
-const { createTxSyncStorage } = await import("../packages/web3-react/src/txSyncStorage.ts");
-const { createTxSyncVocabulary } = await import("../packages/web3-react/src/vocabulary.ts");
+const { createTxSyncStorage } = await import("../packages/web3-tx/src/txSyncStorage.ts");
+const { createTxSyncVocabulary } = await import("../packages/web3-tx/src/vocabulary.ts");
 
 const vocabulary = createTxSyncVocabulary({
   entities: { ORDER: "order" },

@@ -33,13 +33,14 @@
     "check-types": "tsc --noEmit",
     "check:contract-hygiene": "! grep -rnE '@mydaogs/(kv|cache-handler|indexer)|prisma' src/ 2>/dev/null",
     "lint": "eslint src --max-warnings 0",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsup",
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "@mydaogs/core": "workspace:*"
   },
   "devDependencies": {
+    "tsup": "^8.5.1",
     "typescript": "^5.7.3"
   }
 }

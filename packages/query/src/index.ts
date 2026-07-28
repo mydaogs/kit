@@ -13,5 +13,3 @@ export type {
   IdentityScope,
   RemoveIdentityScopedQueriesOptions,
 } from "./identityScope";
-export { useResetCacheOnIdentityChange } from "./useResetCacheOnIdentityChange";
-export type { QueryPersister } from "./useResetCacheOnIdentityChange";

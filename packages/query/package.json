@@ -20,7 +20,7 @@
     }
   },
   "type": "module",
-  "description": "TanStack Query conventions: cache tiers, fetch factories, fail-closed identity-scoped cache reset",
+  "description": "TanStack Query conventions: cache tiers, query-fn factories, fail-closed identity-scoped cache reset",
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts"
@@ -32,14 +32,15 @@
   "scripts": {
     "check-types": "tsc --noEmit",
     "lint": "eslint src --max-warnings 0",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsup",
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@tanstack/react-query": "^5.0.0",
-    "react": "^18.0.0 || ^19.0.0"
+    "@tanstack/react-query": "^5.0.0"
   },
   "devDependencies": {
+    "@tanstack/react-query": "5.62.0",
+    "tsup": "^8.5.1",
     "typescript": "^5.7.3"
   }
 }

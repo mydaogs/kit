@@ -12,20 +12,23 @@ Everything here is domain-free. No product entities, no deployment identifiers, 
 | `@mydaogs/contract` | isomorphic | — | response envelope, error classes, redaction unions, public-path lane, build-time version probe, fetch factory |
 | `@mydaogs/kv` | server | `@upstash/redis` | Redis client with lazy env resolution |
 | `@mydaogs/cache-handler` | Next cache runtime | — | distributed cache handler, cross-app invalidation publisher, tag registry |
-| `@mydaogs/query` | React | `react`, `@tanstack/react-query` | cache tiers, query-fn factories, fail-closed identity-scoped cache reset |
+| `@mydaogs/query` | isomorphic | `@tanstack/react-query` | cache tiers, query-fn factories, dehydrate filter, identity-scope primitives |
+| `@mydaogs/query-client` | React client | `react`, `@tanstack/react-query` | fail-closed identity-scoped cache reset hook |
 | `@mydaogs/web3` | isomorphic | `viem`, `zod` | chain resolution, env refinements, bytes32, explorer URLs, revert decoding |
-| `@mydaogs/web3-react` | React | `wagmi`, `viem`, `@tanstack/react-query` | durable pending-tx registry, contract-write wrapper, pending scope selector |
+| `@mydaogs/web3-tx` | isomorphic | `@tanstack/react-query` | durable pending-tx registry, cross-tab ownership, reconciliation, vocabulary |
+| `@mydaogs/web3-client` | React client | `react`, `wagmi`, `viem`, `@tanstack/react-query` | contract-write wrapper, pending scope selector |
 | `@mydaogs/indexer` | server | `viem` | event hash, atomic claim contract, capped backoff, ordering watermarks, failure taxonomy |
 
 ### Why this split
 
 Grouping is by **dependency boundary and runtime environment**, not by feature area. Unifying further would force wrong peer dependencies — a backend importing React, a browser bundle importing Redis
 
-Three boundaries are deliberate and should not be collapsed:
+Four boundaries are deliberate and should not be collapsed:
 
 - **`kv` stays out of `cache-handler`.** Reader apps load the compiled cache handler outside Next's transpile pipeline, so a bare workspace specifier there is unresolvable on a serverless host's flattened layout. `cache-handler` declares a structural `KvClient` interface and the host passes its own singleton in
-- **`web3` is separate from `web3-react`.** A backend needs chain resolution and bytes32 helpers with no React in the graph
-- **`query` is separate from `web3-react`.** Query conventions are useful in projects with no chain at all
+- **`web3` is separate from `web3-tx`.** A backend needs chain resolution and bytes32 helpers with no transaction registry in the graph
+- **`query` is separate from `web3-tx`.** Query conventions are useful in projects with no chain at all
+- **The `-client` packages are separate from what they wrap.** Every module in `query-client` and `web3-client` imports React, and nothing in `query` or `web3-tx` does — so the `"use client"` boundary and the `react` peer dependency fall on exactly the same line. Merged back, the bundled barrel would carry `"use client"` over `CACHE_TIMES`, `createQueryFns` and the whole tx registry, putting isomorphic code behind a client boundary and forcing React into graphs that do not need it
 
 ## Documentation
 
@@ -147,6 +150,20 @@ These are the non-obvious properties. Changing them silently breaks correctness 
   - [`scripts/smoke.ts`](scripts/smoke.ts) — bigint round-trip fidelity (including that look-alike strings survive), error-envelope code preservation and message sanitization, redaction leaking nothing, public-path rejection, backoff dead-lettering vs status-gap persistence, ordering watermarks, failure classification, sync recovery posture per status code, chain-scoped event hashing, tag partitioning, plus a regression block pinning every bug found in review
   - [`scripts/smoke-dom.ts`](scripts/smoke-dom.ts) — storage-layer regressions against a fake `localStorage`: a stale record must not hide the record that follows it, and an unrecognized vocabulary must be rejected and purged rather than repaired
 - `check-links` — every relative markdown link across the docs resolves to a file that exists
+
+`pnpm verify:dist` is separate and runs after `pnpm build`, in CI and again
+before any publish. It packs every package, installs the tarballs into a
+throwaway project and imports each one under plain Node ESM
+
+It exists because `check-types` and `build` together still let a completely
+unloadable package through: `tsc` checks the source and emits output, but
+nothing else ever *runs* what was emitted. It also covers the only part of
+packaging nothing else reaches — the `publishConfig` substitution, which only
+materialises inside a tarball
+
+It rebuilds before packing on purpose. `prepublishOnly` runs on `publish` but
+not on `pack`, so packing straight away would tarball whatever `dist/` happened
+to be on disk, and a stale one would pass
 
 The CI guards are **not** part of `pnpm check`. They target a consuming repo and now exit non-zero when handed a path with nothing to scan, so running them against this workspace correctly fails:
 

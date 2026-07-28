@@ -42,6 +42,10 @@ jobs:
       # A tag never publishes something that would not have passed a PR
       - run: pnpm check
       - run: pnpm build
+      # The last gate before something permanent. Verifies every tarball
+      # installs and imports as a consumer would, including the publishConfig
+      # dist/ substitution that only materialises inside the tarball.
+      - run: pnpm verify:dist
       # `pnpm -r publish`, not `npm publish`: the packages depend on each other
       # through `workspace:*`, and only pnpm rewrites that to the real version
       # range on the way out. npm would publish the literal `workspace:*` spec,

@@ -24,7 +24,7 @@ import {
   createActionResponseFactory,
 } from "@mydaogs/contract";
 import { computeRetryAt, computeStatusGapRetryAt, isNewerChainEvent, classifyProjectionFailure, StatusProjectionGapError, QuarantineProjectionError, computeEventHash } from "@mydaogs/indexer";
-import { getSyncRecoveryAction } from "../packages/web3-react/src/reconcile.ts";
+import { getSyncRecoveryAction } from "../packages/web3-tx/src/reconcile.ts";
 import { partitionTags, dedupeTags } from "@mydaogs/cache-handler";
 
 // bigint round trip is lossless and does not capture look-alike strings

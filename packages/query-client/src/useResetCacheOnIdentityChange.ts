@@ -6,8 +6,8 @@ import {
   ANONYMOUS_IDENTITY,
   getIdentityScopeKey,
   removeIdentityScopedQueries,
-} from "./identityScope";
-import type { IdentityScope, RemoveIdentityScopedQueriesOptions } from "./identityScope";
+} from "@mydaogs/query";
+import type { IdentityScope, RemoveIdentityScopedQueriesOptions } from "@mydaogs/query";
 
 export interface QueryPersister {
   removeClient: () => Promise<void> | PromiseLike<void> | void;

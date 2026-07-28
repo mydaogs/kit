@@ -32,7 +32,7 @@
   "scripts": {
     "check-types": "tsc --noEmit",
     "lint": "eslint src --max-warnings 0",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsup",
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
@@ -40,6 +40,9 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.3"
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.3",
+    "viem": "2.21.0",
+    "zod": "3.24.0"
   }
 }
