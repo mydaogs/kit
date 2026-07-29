@@ -69,6 +69,46 @@ export interface PendingTxScopeSelection {
   allEntries: PendingTxScopeEntryView[];
 }
 
+/**
+ * Which durable records a background watcher should resume.
+ *
+ * Deliberately **not** conditioned on `successMessage` or any other
+ * presentation field. A write persists a record whether or not it supplied
+ * copy, and filtering the watcher's source on a display concern means those
+ * records get no reload recovery, no cross-tab recovery and no retry — they
+ * just sit until the TTL while the reads they should have refreshed stay
+ * stale. Eligibility is about ownership and lifecycle, nothing else.
+ */
+export function selectWatchableEntries(params: {
+  store: TxSyncStore;
+  /** Connected address, or `null` when disconnected. */
+  account?: `0x${string}` | null;
+  /** True while a mounted write hook still owns the hash in this tab. */
+  isLiveOwner: (txHash: string) => boolean;
+}): TxSyncEntry[] {
+  const { store, account, isLiveOwner } = params;
+
+  return Object.values(store).filter((entry) => {
+    // A terminal warning is a badge the user acts on, not work to resume.
+    if (entry.phase === "warning") return false;
+    // A live hook still holds this one; two owners would double-reconcile.
+    if (isLiveOwner(entry.hash)) return false;
+    if (!account) return entry.account === null;
+    if (!entry.account) return true;
+    return entry.account.toLowerCase() === account.toLowerCase();
+  });
+}
+
+/** Records whose scheduled retry has come due. */
+export function selectDueEntries(
+  entries: readonly TxSyncEntry[],
+  now: number = Date.now(),
+): TxSyncEntry[] {
+  return entries.filter(
+    (entry) => !entry.nextRetryAt || entry.nextRetryAt <= now,
+  );
+}
+
 const resolveStatus = (entry: TxSyncEntry): PendingTxStatus => {
   if (entry.phase === "warning") return "warning";
   const nextRetryAt = entry.nextRetryAt ?? 0;

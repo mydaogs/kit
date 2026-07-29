@@ -18,7 +18,11 @@ export type {
   NonEmptyResolvedPendingTxScopeItems,
 } from "./txSyncStorage";
 
-export { selectPendingTxScope } from "./selectPendingTxScope";
+export {
+  selectPendingTxScope,
+  selectWatchableEntries,
+  selectDueEntries,
+} from "./selectPendingTxScope";
 export type {
   PendingTxStatus,
   PendingTxScopeEntryView,
