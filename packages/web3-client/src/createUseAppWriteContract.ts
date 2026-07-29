@@ -52,7 +52,15 @@ export interface WriteContractOptions {
 export interface CreateUseAppWriteContractDeps {
   storage: TxSyncStorage;
   toast: TxToastAdapter;
-  messages: TxMessages;
+  /**
+   * Resolves the copy, called once per render inside the hook.
+   *
+   * A hook rather than a static object because every mainstream i18n library
+   * resolves strings through one — a static bundle would force the host to
+   * either pin a locale at module scope or rebuild the factory per render,
+   * and rebuilding it changes the component identity and remounts the tree.
+   */
+  useMessages: () => TxMessages;
   /** Explorer URL for the active chain, or null when it has none. */
   getExplorerTxUrl: (txHash: string) => string | null;
   /** Backend replay used when `syncTxBeforeInvalidate` is set. */
@@ -91,10 +99,11 @@ export interface CreateUseAppWriteContractDeps {
  * mounted surface and cannot transfer to a watcher.
  */
 export function createUseAppWriteContract(deps: CreateUseAppWriteContractDeps) {
-  const { storage, toast, messages, getExplorerTxUrl, syncTxHash, onAuthPaused } =
+  const { storage, toast, useMessages, getExplorerTxUrl, syncTxHash, onAuthPaused } =
     deps;
 
   return function useAppWriteContract(props?: UseAppWriteContractProps) {
+    const messages = useMessages();
     // Silently falling back to invalidate-only would persist a record claiming
     // `reconciliationMode: "backend-sync"` that no watcher can ever satisfy,
     // and projected reads would stay stale behind indexer latency with no

@@ -29,7 +29,15 @@ import type { TxMessages, TxToastAdapter } from "@mydaogs/web3-tx";
 export interface CreatePendingTxWatcherDeps {
   storage: TxSyncStorage;
   toast: TxToastAdapter;
-  messages: TxMessages;
+  /**
+   * Resolves the copy, called once per render inside the component.
+   *
+   * A hook rather than a static object because every mainstream i18n library
+   * resolves strings through one — a static bundle would force the host to
+   * either pin a locale at module scope or rebuild the factory per render,
+   * and rebuilding it changes the component identity and remounts the tree.
+   */
+  useMessages: () => TxMessages;
   /** Explorer URL for the active chain, or null when it has none. */
   getExplorerTxUrl: (txHash: string) => string | null;
   /** Backend replay used when an entry has `syncTxBeforeInvalidate`. */
@@ -74,7 +82,7 @@ const getServerSnapshot = (): TxSyncStore => EMPTY_STORE;
  * so exactly one tab reconciles a given transaction.
  */
 export function createPendingTxWatcher(deps: CreatePendingTxWatcherDeps) {
-  const { storage, toast, messages, getExplorerTxUrl, syncTxHash, onAuthPaused } =
+  const { storage, toast, useMessages, getExplorerTxUrl, syncTxHash, onAuthPaused } =
     deps;
 
   /**
@@ -84,13 +92,14 @@ export function createPendingTxWatcher(deps: CreatePendingTxWatcherDeps) {
    */
   const activeReconciliations = new Set<string>();
 
-  const buildExplorerAction = (txHash: string) => {
+  const buildExplorerAction = (txHash: string, label: string) => {
     const url = getExplorerTxUrl(txHash);
-    return url ? { label: messages.viewOnExplorer, url } : undefined;
+    return url ? { label, url } : undefined;
   };
 
   const PendingTxRecordWatcher = ({ entry }: { entry: TxSyncEntry }) => {
     const hash = entry.hash;
+    const messages = useMessages();
     const queryClient = useQueryClient();
     const handledRef = useRef(false);
     const toastShownRef = useRef(false);
@@ -164,13 +173,13 @@ export function createPendingTxWatcher(deps: CreatePendingTxWatcherDeps) {
         toast.show({
           txHash: hash,
           message: messages.confirmedUpdating,
-          action: buildExplorerAction(hash),
+          action: buildExplorerAction(hash, messages.viewOnExplorer),
         });
       } else if (entry.phase !== "reconciling") {
         toast.show({
           txHash: hash,
           message: messages.pending(truncateString({ value: hash })),
-          action: buildExplorerAction(hash),
+          action: buildExplorerAction(hash, messages.viewOnExplorer),
         });
       }
     }, [entry.phase, entry.retryCount, hash, ownership]);
@@ -212,7 +221,7 @@ export function createPendingTxWatcher(deps: CreatePendingTxWatcherDeps) {
             toast.show({
               txHash: hash,
               message: messages.confirmedUpdating,
-              action: buildExplorerAction(hash),
+              action: buildExplorerAction(hash, messages.viewOnExplorer),
             });
           }
 
