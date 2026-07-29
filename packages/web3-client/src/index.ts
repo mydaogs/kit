@@ -1,6 +1,8 @@
 export { createUseAppWriteContract } from "./createUseAppWriteContract";
 export type {
   UseAppWriteContractProps,
+  UseAppWriteContractResult,
+  AppWriteContractParams,
   WriteContractOptions,
   CreateUseAppWriteContractDeps,
 } from "./createUseAppWriteContract";

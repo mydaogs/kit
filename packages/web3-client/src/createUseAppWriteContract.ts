@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TransactionReceipt } from "viem";
 import { useAccount, useTransactionReceipt, useWriteContract } from "wagmi";
+import type { UseWriteContractReturnType } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { truncateString } from "@mydaogs/core";
 import { resolveContractErrorMessage } from "@mydaogs/web3";
@@ -98,7 +99,34 @@ export interface CreateUseAppWriteContractDeps {
  * after navigation or the record leaks, but callback closures belong to the
  * mounted surface and cannot transfer to a watcher.
  */
-export function createUseAppWriteContract(deps: CreateUseAppWriteContractDeps) {
+/**
+ * Arguments accepted by the underlying wagmi write, named through wagmi's own
+ * public export rather than inferred.
+ *
+ * Inferring it pulls a viem internal path (`viem/_types/experimental/...`) into
+ * the emitted declaration, which TypeScript refuses to name portably under
+ * viem's newer `authorizationList` typings — an error that only appears once
+ * the package is compiled against wagmi 3.
+ */
+export type AppWriteContractParams = Parameters<
+  UseWriteContractReturnType["writeContractAsync"]
+>[0];
+
+export interface UseAppWriteContractResult {
+  writeContract: (
+    params: AppWriteContractParams,
+    options: WriteContractOptions,
+  ) => Promise<`0x${string}` | null>;
+  /** True from submission through reconciliation, with no gap between. */
+  isProcessing: boolean;
+  hash: `0x${string}` | undefined;
+  receipt: TransactionReceipt | undefined;
+  isError: boolean;
+}
+
+export function createUseAppWriteContract(
+  deps: CreateUseAppWriteContractDeps,
+): (props?: UseAppWriteContractProps) => UseAppWriteContractResult {
   const { storage, toast, useMessages, getExplorerTxUrl, syncTxHash, onAuthPaused } =
     deps;
 
