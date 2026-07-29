@@ -5,7 +5,10 @@ export {
 } from "./backoff";
 export type { BackoffOptions } from "./backoff";
 export { isNewerChainEvent } from "./watermark";
-export type { ChainCoordinates } from "./watermark";
+export type {
+  ChainCoordinates,
+  StoredChainCoordinates,
+} from "./watermark";
 export {
   PROJECTION_OUTCOME,
   classifyProjectionFailure,
