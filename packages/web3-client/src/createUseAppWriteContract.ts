@@ -57,8 +57,17 @@ export interface CreateUseAppWriteContractDeps {
   getExplorerTxUrl: (txHash: string) => string | null;
   /** Backend replay used when `syncTxBeforeInvalidate` is set. */
   syncTxHash?: (txHash: `0x${string}`) => Promise<void>;
-  /** Invalidated when a 401 pauses reconciliation. */
-  sessionQueryKey?: readonly unknown[];
+  /**
+   * Runs when a 401 pauses reconciliation, to refresh session authority before
+   * the retry.
+   *
+   * **Required, and deliberately not optional.** A pause-auth outcome retains
+   * the durable record and schedules a retry without consuming an attempt, so
+   * nothing surfaces if session authority is never refreshed — the retry simply
+   * 401s again until the budget is gone. A project with no session concept
+   * passes an explicit no-op, which is a decision rather than an omission.
+   */
+  onAuthPaused: () => void | Promise<void>;
 }
 
 /**
@@ -82,7 +91,8 @@ export interface CreateUseAppWriteContractDeps {
  * mounted surface and cannot transfer to a watcher.
  */
 export function createUseAppWriteContract(deps: CreateUseAppWriteContractDeps) {
-  const { storage, toast, messages, getExplorerTxUrl, syncTxHash, sessionQueryKey } = deps;
+  const { storage, toast, messages, getExplorerTxUrl, syncTxHash, onAuthPaused } =
+    deps;
 
   return function useAppWriteContract(props?: UseAppWriteContractProps) {
     // Silently falling back to invalidate-only would persist a record claiming
@@ -254,8 +264,8 @@ export function createUseAppWriteContract(deps: CreateUseAppWriteContractDeps) {
           if (!shouldRetain) {
             storage.deleteEntry(hash);
           } else {
-            if (recoveryAction === "pause-auth" && sessionQueryKey) {
-              void queryClient.invalidateQueries({ queryKey: sessionQueryKey });
+            if (recoveryAction === "pause-auth") {
+              void onAuthPaused();
             }
             storage.scheduleRetry(hash, recoveryAction);
           }

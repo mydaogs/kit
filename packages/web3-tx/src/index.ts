@@ -34,4 +34,11 @@ export {
 } from "./reconcile";
 export type { ReconcileParams, ReconcileResult, RecoveryAction } from "./reconcile";
 
+export { createBudgetedTxSync } from "./budgetedSync";
+export type {
+  TxSyncAttempt,
+  TxSyncRetryOptions,
+  CreateBudgetedTxSyncOptions,
+} from "./budgetedSync";
+
 export type { TxToastAdapter, TxToastAction, TxMessages } from "./toastAdapter";
