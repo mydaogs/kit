@@ -5,6 +5,24 @@ export type TxSyncPhase = "pending" | "reconciling" | "warning";
 export type TxSyncReconciliationMode = "backend-sync" | "invalidate-only";
 export type TxSyncQueryKey = string | string[] | readonly unknown[];
 
+/**
+ * Conflict and visibility policy for an item. **Normative** — the selector
+ * interprets it.
+ *
+ * - `replace` — a newer write supersedes an older one on the same
+ *   entity-and-conflict key. Only the newest stays visible, and only it blocks.
+ *   Editing the same terms twice is one pending state, not two.
+ * - `additive` — independent operations that happen to share an entity. Each
+ *   stays visible and each blocks on its own. Granting two roles to one account
+ *   is two facts; collapsing them would hide the first.
+ *
+ * Resolving precedence by `timestamp` alone cannot express the difference —
+ * it always supersedes, so an `additive` set silently renders as one entry.
+ * Absent means `replace`: the conservative reading of a write that declared no
+ * policy, and the pre-0.3 behaviour.
+ */
+export type TxSyncVariant = "replace" | "additive";
+
 export interface PendingTxScopeItem {
   entityType: string;
   entityId: string;
@@ -12,12 +30,13 @@ export interface PendingTxScopeItem {
   conflictKey: string;
   /** Identifies the originating control, so only it restores its spinner. */
   actionKey: string;
-  /**
-   * Opaque pass-through metadata for the consumer. The selector does not
-   * interpret it — per-conflict-key precedence is resolved by entry
-   * `timestamp` (newest wins), not by variant.
-   */
-  variant?: string;
+  /** Defaults to `replace` when absent. */
+  variant?: TxSyncVariant;
+}
+
+/** A hydrated item: `variant` is always resolved. */
+export interface ResolvedPendingTxScopeItem extends PendingTxScopeItem {
+  variant: TxSyncVariant;
 }
 
 export type NonEmptyPendingTxScopeItems = readonly [
@@ -25,7 +44,16 @@ export type NonEmptyPendingTxScopeItems = readonly [
   ...PendingTxScopeItem[],
 ];
 
-export interface TxSyncEntry {
+export type NonEmptyResolvedPendingTxScopeItems = readonly [
+  ResolvedPendingTxScopeItem,
+  ...ResolvedPendingTxScopeItem[],
+];
+
+/**
+ * The shape a caller supplies to `saveEntry`. Optional fields stay optional
+ * here; what hydration returns is the stricter `TxSyncEntry` below.
+ */
+export interface TxSyncEntryInput {
   version: 1;
   hash: `0x${string}`;
   timestamp: number;
@@ -38,6 +66,21 @@ export interface TxSyncEntry {
   syncTxBeforeInvalidate?: boolean;
   retryCount?: number;
   nextRetryAt?: number;
+}
+
+/**
+ * A hydrated entry.
+ *
+ * `queryKeysToInvalidate` and `retryCount` are **required** here even though
+ * they are optional on input, because hydration always resolves them. Leaving
+ * them optional on the read type is what lets a consumer write
+ * `entry.queryKeysToInvalidate.length` or `entry.retryCount === 0` against a
+ * value that type-checks and is `undefined` at runtime.
+ */
+export interface TxSyncEntry extends TxSyncEntryInput {
+  pendingItems: NonEmptyResolvedPendingTxScopeItems;
+  queryKeysToInvalidate: TxSyncQueryKey[];
+  retryCount: number;
 }
 
 export type TxSyncStore = Record<string, TxSyncEntry>;
@@ -133,7 +176,7 @@ export function createTxSyncStorage(params: {
     const items = candidate.pendingItems;
     if (!Array.isArray(items) || items.length === 0) return null;
 
-    const normalizedItems: PendingTxScopeItem[] = [];
+    const normalizedItems: ResolvedPendingTxScopeItem[] = [];
     for (const item of items) {
       if (!item || typeof item !== "object") return null;
       const it = item as Record<string, unknown>;
@@ -157,7 +200,11 @@ export function createTxSyncStorage(params: {
         entityId: it.entityId,
         conflictKey: it.conflictKey,
         actionKey: it.actionKey,
-        ...(typeof it.variant === "string" ? { variant: it.variant } : {}),
+        // An unrecognized variant resolves to `replace` rather than rejecting
+        // the record: the policy is a rendering hint, and discarding an
+        // in-flight transaction over it would be a worse failure than
+        // rendering it conservatively.
+        variant: it.variant === "additive" ? "additive" : "replace",
       });
     }
 
@@ -171,18 +218,21 @@ export function createTxSyncStorage(params: {
           ? (candidate.account as `0x${string}`)
           : null,
       reconciliationMode: mode,
-      pendingItems: normalizedItems as unknown as NonEmptyPendingTxScopeItems,
+      pendingItems:
+        normalizedItems as unknown as NonEmptyResolvedPendingTxScopeItems,
+      // Always resolved, never conditionally spread: these two are required on
+      // the read type precisely so a consumer cannot get `undefined` from a
+      // field the compiler says is present.
+      queryKeysToInvalidate: Array.isArray(candidate.queryKeysToInvalidate)
+        ? (candidate.queryKeysToInvalidate as TxSyncQueryKey[])
+        : [],
+      retryCount:
+        typeof candidate.retryCount === "number" ? candidate.retryCount : 0,
       ...(typeof candidate.successMessage === "string"
         ? { successMessage: candidate.successMessage }
         : {}),
-      ...(Array.isArray(candidate.queryKeysToInvalidate)
-        ? { queryKeysToInvalidate: candidate.queryKeysToInvalidate as TxSyncQueryKey[] }
-        : {}),
       ...(typeof candidate.syncTxBeforeInvalidate === "boolean"
         ? { syncTxBeforeInvalidate: candidate.syncTxBeforeInvalidate }
-        : {}),
-      ...(typeof candidate.retryCount === "number"
-        ? { retryCount: candidate.retryCount }
         : {}),
       ...(typeof candidate.nextRetryAt === "number"
         ? { nextRetryAt: candidate.nextRetryAt }
@@ -246,7 +296,10 @@ export function createTxSyncStorage(params: {
     return store;
   };
 
-  const persistEntry = (entry: TxSyncEntry): boolean => {
+  // Accepts the input shape: a patch merged over a hydrated entry can widen
+  // `pendingItems` back to items whose `variant` is not yet resolved, and the
+  // read path resolves it again on the way out.
+  const persistEntry = (entry: TxSyncEntryInput): boolean => {
     if (!hasStorage()) return false;
     try {
       // bigIntStringify, not JSON.stringify: queryKeysToInvalidate may carry
@@ -392,7 +445,7 @@ export function createTxSyncStorage(params: {
 
   // ── Mutations ─────────────────────────────────────────────────────────
 
-  const saveEntry = (entry: Omit<TxSyncEntry, "version">): boolean => {
+  const saveEntry = (entry: Omit<TxSyncEntryInput, "version">): boolean => {
     const candidate = { ...entry, version: ENTRY_VERSION } as TxSyncEntry;
 
     // Validate on write, exactly as the read path does. Persisting an entry the
@@ -417,7 +470,7 @@ export function createTxSyncStorage(params: {
   /** Re-reads then patches only this hash, so concurrent tabs cannot clobber. */
   const patchEntry = (
     txHash: string,
-    patch: Partial<Omit<TxSyncEntry, "version" | "hash">>,
+    patch: Partial<Omit<TxSyncEntryInput, "version" | "hash">>,
   ): void => {
     const existing = readEntry(txHash);
     if (!existing) return;

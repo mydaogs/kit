@@ -27,3 +27,22 @@ Two separate identifiers, because they answer different questions:
 - **`actionKey`** — which control was the originator. Only the exact match restores its own spinner after a reload
 
 Scope conflict keys to the operation, not the entity alone: an in-flight terms update should block the edit affordance without colliding with unrelated publish/cancel operations on the same record. Conversely, reuse an existing conflict key when two operations genuinely contend for the same onchain position, so they conflict automatically without a new key
+
+## Variant
+
+`variant` is the conflict and visibility policy for an item, and `selectPendingTxScope` interprets it. It is not pass-through metadata
+
+- **`replace`** — a newer write supersedes an older one on the same entity-and-conflict key. Only the newest stays visible and only it blocks. Editing the same terms twice is one pending state, not two
+- **`additive`** — independent operations that happen to share an entity. Each stays visible and each blocks on its own. Granting two roles to one account is two facts, and collapsing them would hide the first
+
+Absent means `replace`: the conservative reading of a write that declared no policy
+
+Precedence cannot be resolved by `timestamp` alone. Timestamp always supersedes, so an `additive` set silently renders as a single entry and the earlier grant disappears from the UI while its transaction is still in flight
+
+Supersession is resolved twice, separately, for visibility and for blocking. A terminal warning can be the newest entry for its key and must stay visible as a badge, but it must not take the blocking slot from an older entry that is still active — the newest overall and the newest *active* are not always the same record
+
+## Status
+
+`selectPendingTxScope` derives `pending | retrying | warning` from `phase` plus retry bookkeeping, so a consumer never has to know that `retrying` is not a stored phase
+
+A terminal warning stays visible but never blocks. It is a badge, not a lock: refusing to let the user retry a failed reconciliation would strand them with no way forward

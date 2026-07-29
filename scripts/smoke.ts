@@ -25,6 +25,10 @@ import {
 } from "@mydaogs/contract";
 import { computeRetryAt, computeStatusGapRetryAt, isNewerChainEvent, classifyProjectionFailure, StatusProjectionGapError, QuarantineProjectionError, computeEventHash } from "@mydaogs/indexer";
 import { getSyncRecoveryAction } from "../packages/web3-tx/src/reconcile.ts";
+import {
+  selectPendingTxScope,
+  buildPendingTxConflictKey,
+} from "@mydaogs/web3-tx";
 import { partitionTags, dedupeTags } from "@mydaogs/cache-handler";
 
 // bigint round trip is lossless and does not capture look-alike strings
@@ -236,6 +240,152 @@ for (const [name, tier] of Object.entries(CACHE_TIMES)) {
   assert.equal(shouldDehydrate(q(["public-list"], "pending")), false);
   assert.equal(shouldDehydrate(q(["public-list"], "error")), false);
   assert.equal(shouldDehydrate(q(["public-list"], "success", "fetching")), false);
+}
+
+// pending-tx scope selection: variant is normative, warnings never block
+{
+  type SmokeItem = {
+    entityId: string;
+    conflictKey: string;
+    actionKey: string;
+    variant: "replace" | "additive";
+    entityType?: string;
+  };
+
+  const entry = (
+    hash: string,
+    timestamp: number,
+    phase: "pending" | "reconciling" | "warning",
+    items: SmokeItem[],
+    account: `0x${string}` | null = null,
+  ) =>
+    [
+      hash,
+      {
+        version: 1 as const,
+        hash: hash as `0x${string}`,
+        timestamp,
+        phase,
+        account,
+        reconciliationMode: "invalidate-only" as const,
+        queryKeysToInvalidate: [],
+        retryCount: 0,
+        pendingItems: items.map((i) => ({
+          entityType: i.entityType ?? "lot",
+          entityId: i.entityId,
+          conflictKey: i.conflictKey,
+          actionKey: i.actionKey,
+          variant: i.variant,
+        })),
+      },
+    ] as const;
+
+  const key = (id: string, conflict: string) =>
+    buildPendingTxConflictKey(id, conflict);
+  const hashes = (views: Array<{ txHash: string }>) =>
+    views.map((v) => v.txHash).sort();
+
+  // `replace`: a newer write supersedes the older one for visibility.
+  {
+    const store = Object.fromEntries([
+      entry("0xa", 100, "pending", [
+        { entityId: "l1", conflictKey: "terms", actionKey: "a1", variant: "replace" },
+      ]),
+      entry("0xb", 200, "pending", [
+        { entityId: "l1", conflictKey: "terms", actionKey: "a2", variant: "replace" },
+      ]),
+    ]) as never;
+    const s = selectPendingTxScope({ store });
+    assert.equal(s.visibleEntries.length, 1);
+    assert.equal(s.visibleEntries[0]!.txHash, "0xb");
+    assert.equal(s.blockingEntryByConflictKey.get(key("l1", "terms"))?.txHash, "0xb");
+  }
+
+  // `additive`: both stay visible; the newest active holds the block. This is
+  // the case `timestamp`-only precedence cannot express.
+  {
+    const store = Object.fromEntries([
+      entry("0xa", 100, "pending", [
+        { entityId: "o1", conflictKey: "admin-role", actionKey: "a1", variant: "additive" },
+      ]),
+      entry("0xb", 200, "pending", [
+        { entityId: "o1", conflictKey: "admin-role", actionKey: "a2", variant: "additive" },
+      ]),
+    ]) as never;
+    const s = selectPendingTxScope({ store });
+    assert.equal(s.visibleEntries.length, 2);
+    assert.equal(s.blockingEntryByConflictKey.get(key("o1", "admin-role"))?.txHash, "0xb");
+    assert.equal(s.blockingEntryByActionKey.get("a1")?.txHash, "0xa");
+    assert.equal(s.blockingEntryByActionKey.get("a2")?.txHash, "0xb");
+  }
+
+  // A terminal warning stays visible but must not take the blocking slot from
+  // an older entry that is still active.
+  {
+    const store = Object.fromEntries([
+      entry("0xa", 100, "pending", [
+        { entityId: "l1", conflictKey: "terms", actionKey: "a1", variant: "replace" },
+      ]),
+      entry("0xb", 200, "warning", [
+        { entityId: "l1", conflictKey: "terms", actionKey: "a2", variant: "replace" },
+      ]),
+    ]) as never;
+    const s = selectPendingTxScope({ store });
+    assert.equal(s.visibleEntries[0]!.txHash, "0xb");
+    assert.equal(s.blockingEntryByConflictKey.get(key("l1", "terms"))?.txHash, "0xa");
+    assert.equal(s.blockingEntries.every((e) => e.status !== "warning"), true);
+  }
+
+  // Entity, visible-id, and account filtering.
+  {
+    const store = Object.fromEntries([
+      entry("0xa", 100, "pending", [
+        { entityId: "l1", conflictKey: "terms", actionKey: "a1", variant: "replace" },
+      ]),
+      entry("0xb", 100, "pending", [
+        { entityId: "w1", conflictKey: "state", actionKey: "a2", variant: "replace", entityType: "wallet" },
+      ]),
+      entry(
+        "0xc",
+        100,
+        "pending",
+        [{ entityId: "l2", conflictKey: "terms", actionKey: "a3", variant: "replace" }],
+        "0xAAAA000000000000000000000000000000000000",
+      ),
+    ]) as never;
+
+    assert.deepEqual(hashes(selectPendingTxScope({ store, entityType: "lot" }).allEntries), ["0xa", "0xc"]);
+    assert.deepEqual(hashes(selectPendingTxScope({ store, visibleEntityIds: ["l1"] }).allEntries), ["0xa"]);
+    assert.deepEqual(
+      hashes(selectPendingTxScope({ store, visibleEntityIds: ["l1"], includeUnmatchedEntries: true }).allEntries),
+      ["0xa", "0xb", "0xc"],
+    );
+    // Explicitly disconnected admits only account-less entries.
+    assert.deepEqual(hashes(selectPendingTxScope({ store, account: null }).allEntries), ["0xa", "0xb"]);
+    // Case-insensitive, so a checksum difference cannot silently drop an entry.
+    assert.deepEqual(
+      hashes(
+        selectPendingTxScope({
+          store,
+          account: "0xaaaa000000000000000000000000000000000000",
+        }).allEntries,
+      ),
+      ["0xa", "0xb", "0xc"],
+    );
+    // An empty visible set is not the same as an absent one.
+    assert.deepEqual(selectPendingTxScope({ store, visibleEntityIds: [] }).allEntries, []);
+  }
+
+  // `retrying` is derived from retry bookkeeping, not a stored phase.
+  {
+    const [, base] = entry("0xa", Date.now(), "reconciling", [
+      { entityId: "l1", conflictKey: "terms", actionKey: "a1", variant: "replace" },
+    ]);
+    const store = { "0xa": { ...base, retryCount: 2 } } as never;
+    assert.equal(selectPendingTxScope({ store }).allEntries[0]!.status, "retrying");
+    const idle = { "0xa": { ...base, phase: "pending" as const } } as never;
+    assert.equal(selectPendingTxScope({ store: idle }).allEntries[0]!.status, "pending");
+  }
 }
 
 console.log("all regression assertions passed");

@@ -5,14 +5,26 @@ export { createTxSyncStorage } from "./txSyncStorage";
 export type {
   TxSyncStorage,
   TxSyncEntry,
+  TxSyncEntryInput,
   TxSyncStore,
   TxSyncPhase,
   TxSyncQueryKey,
   TxSyncReconciliationMode,
+  TxSyncVariant,
   TxCrossTabOwnership,
   PendingTxScopeItem,
+  ResolvedPendingTxScopeItem,
   NonEmptyPendingTxScopeItems,
+  NonEmptyResolvedPendingTxScopeItems,
 } from "./txSyncStorage";
+
+export { selectPendingTxScope } from "./selectPendingTxScope";
+export type {
+  PendingTxStatus,
+  PendingTxScopeEntryView,
+  PendingTxScopeSelection,
+  SelectPendingTxScopeParams,
+} from "./selectPendingTxScope";
 
 export {
   reconcileConfirmedTransaction,

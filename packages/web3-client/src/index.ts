@@ -6,4 +6,4 @@ export type {
 } from "./createUseAppWriteContract";
 
 export { createUsePendingTxScope } from "./usePendingTxScope";
-export type { PendingTxScopeSelection } from "./usePendingTxScope";
+export type { UsePendingTxScopeParams } from "./usePendingTxScope";
