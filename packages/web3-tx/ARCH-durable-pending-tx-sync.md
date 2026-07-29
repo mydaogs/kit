@@ -46,3 +46,25 @@ Supersession is resolved twice, separately, for visibility and for blocking. A t
 `selectPendingTxScope` derives `pending | retrying | warning` from `phase` plus retry bookkeeping, so a consumer never has to know that `retrying` is not a stored phase
 
 A terminal warning stays visible but never blocks. It is a badge, not a lock: refusing to let the user retry a failed reconciliation would strand them with no way forward
+
+## Sync contention
+
+"The backend is already syncing this transaction" is contention, not failure. The lease is held by an indexer run that will finish, so failing on the first such response surfaces a spurious refresh warning for a transaction that is already final onchain, and leaves the projected reads stale until something else happens to invalidate them
+
+`createBudgetedTxSync` wraps a single-shot sync in a retry budget and produces the `syncTxHash` that `reconcileConfirmedTransaction` expects. The attempt function must not retry internally — the wrapper owns that
+
+Prefer `maxElapsedMs` over a retry count. A count is a budget in attempts, not in time: three attempts at 1.5× backoff is about four seconds, which says nothing useful about whether a lease is still held. When the elapsed budget is set it replaces count-based exhaustion, and the final delay is clamped to the remaining time so the deadline always gets one last attempt rather than being skipped past by the backoff
+
+Only codes listed in `retryOn` are waited out. Everything else fails immediately, because retrying a deterministic rejection just burns the budget. On exhaustion the thrown error preserves `code` and `params`, so `getSyncRecoveryAction` still classifies it as retryable and the durable record survives for a later attempt
+
+## Invalidation
+
+`invalidateQueryKeys` attempts every key and awaits all of them before re-throwing the first failure. A sequential loop that throws on the first failure closes the reconciliation window while later refetches are still in flight — the keys after the failing one are never invalidated at all, so a confirmed transaction leaves part of the UI stale, and the retry that gets scheduled covers the whole record rather than the keys that were skipped
+
+Keys are deduped with `stableHash` rather than `JSON.stringify`, because wallet-library query keys routinely carry bigints and stringify throws on them — which would fail dedupe before any invalidation ran, turning every confirmed transaction into a false refresh warning
+
+## Auth pause
+
+A 401 during reconciliation is a `pause-auth` outcome: it retains the durable record and reschedules without consuming a retry, because an expired session is not evidence the transaction cannot reconcile
+
+`onAuthPaused` is required on `createUseAppWriteContract` rather than optional. Nothing surfaces if session authority is never refreshed — the retry simply 401s again until the budget is gone. A project with no session concept passes an explicit no-op, which is a decision rather than an omission

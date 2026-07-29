@@ -28,6 +28,8 @@ import { getSyncRecoveryAction } from "../packages/web3-tx/src/reconcile.ts";
 import {
   selectPendingTxScope,
   buildPendingTxConflictKey,
+  createBudgetedTxSync,
+  invalidateQueryKeys,
 } from "@mydaogs/web3-tx";
 import { partitionTags, dedupeTags } from "@mydaogs/cache-handler";
 
@@ -386,6 +388,125 @@ for (const [name, tier] of Object.entries(CACHE_TIMES)) {
     const idle = { "0xa": { ...base, phase: "pending" as const } } as never;
     assert.equal(selectPendingTxScope({ store: idle }).allEntries[0]!.status, "pending");
   }
+}
+
+// budgeted tx sync: contention is waited out, deterministic failures are not
+{
+  const HASH = `0x${"a".repeat(64)}` as `0x${string}`;
+
+  // Succeeds on the third attempt; the elapsed budget must cover it.
+  {
+    let calls = 0;
+    const sync = createBudgetedTxSync({
+      attempt: async () => {
+        calls += 1;
+        return calls < 3
+          ? { success: false, errorCode: "SYNC_IN_PROGRESS" }
+          : { success: true };
+      },
+      retry: { delayMs: 1, backoffMultiplier: 2, maxDelayMs: 4, maxElapsedMs: 500 },
+    });
+    await sync(HASH);
+    assert.equal(calls, 3);
+  }
+
+  // A non-retryable code fails on the first attempt rather than burning budget.
+  {
+    let calls = 0;
+    const sync = createBudgetedTxSync({
+      attempt: async () => {
+        calls += 1;
+        return { success: false, errorCode: "ACCESS_DENIED", errorMessage: "nope", errorStatus: 403 };
+      },
+      retry: { delayMs: 1, maxElapsedMs: 500 },
+    });
+    await assert.rejects(() => sync(HASH));
+    assert.equal(calls, 1);
+  }
+
+  // Exhaustion throws, and the thrown error still classifies as retryable so
+  // the durable record survives for a later attempt.
+  {
+    const sync = createBudgetedTxSync({
+      attempt: async () => ({
+        success: false,
+        errorCode: "SYNC_IN_PROGRESS",
+        errorMessage: "busy",
+        errorStatus: 409,
+      }),
+      retry: { delayMs: 1, backoffMultiplier: 1, maxDelayMs: 1, maxElapsedMs: 10 },
+    });
+    await assert.rejects(
+      () => sync(HASH),
+      (error: unknown) => {
+        assert.equal(getSyncRecoveryAction(error), "retry");
+        return true;
+      },
+    );
+  }
+
+  // throwOnExhausted: false resolves instead of throwing.
+  {
+    const sync = createBudgetedTxSync({
+      attempt: async () => ({ success: false, errorCode: "SYNC_IN_PROGRESS" }),
+      retry: { delayMs: 1, maxElapsedMs: 5 },
+      throwOnExhausted: false,
+    });
+    await sync(HASH);
+  }
+
+  // retry: false still makes exactly one attempt.
+  {
+    let calls = 0;
+    const sync = createBudgetedTxSync({
+      attempt: async () => {
+        calls += 1;
+        return { success: false, errorCode: "SYNC_IN_PROGRESS" };
+      },
+      retry: false,
+    });
+    await assert.rejects(() => sync(HASH));
+    assert.equal(calls, 1);
+  }
+}
+
+// invalidation attempts every key even when one fails
+{
+  const attempted: string[] = [];
+  const queryClient = {
+    invalidateQueries: async (filters: { queryKey: readonly unknown[] }) => {
+      const root = String(filters.queryKey[0]);
+      attempted.push(root);
+      if (root === "b") throw new Error("refetch failed");
+    },
+  } as never;
+
+  await assert.rejects(() =>
+    invalidateQueryKeys({
+      queryClient,
+      queryKeysToInvalidate: [["a"], ["b"], ["c"]],
+    }),
+  );
+  // A sequential loop that threw on "b" would never reach "c", leaving part of
+  // the UI stale after a confirmed transaction.
+  assert.deepEqual(attempted.sort(), ["a", "b", "c"]);
+
+  // Dedupe survives bigint-bearing keys, which JSON.stringify would throw on.
+  const seen: string[] = [];
+  const counting = {
+    invalidateQueries: async (filters: { queryKey: readonly unknown[] }) => {
+      seen.push(String(filters.queryKey[0]));
+    },
+  } as never;
+  await invalidateQueryKeys({
+    queryClient: counting,
+    queryKeysToInvalidate: [
+      ["lot", { id: 1n }],
+      ["lot", { id: 1n }],
+      ["lot", { id: 2n }],
+    ],
+  });
+  assert.equal(seen.length, 2);
 }
 
 console.log("all regression assertions passed");

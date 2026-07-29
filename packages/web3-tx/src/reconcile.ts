@@ -54,16 +54,30 @@ export async function invalidateQueryKeys(params: {
     unique.push(key);
   }
 
-  for (const key of unique) {
-    try {
-      await params.queryClient.invalidateQueries(
-        { queryKey: toQueryKeyArray(key), refetchType: "active" },
-        { throwOnError: true },
-      );
-    } catch (error) {
-      throw new QueryRefetchFailureError(key, error);
-    }
-  }
+  // `allSettled`, not a sequential loop that throws on the first failure.
+  //
+  // Every key must be attempted and awaited before anything is re-thrown. A
+  // fast-fail closes the reconciliation window while later refetches are still
+  // in flight: keys after the failing one are never invalidated at all, so a
+  // confirmed transaction leaves part of the UI stale — and the retry that gets
+  // scheduled covers the whole record, not the keys that were skipped.
+  const results = await Promise.allSettled(
+    unique.map((key) =>
+      params.queryClient
+        .invalidateQueries(
+          { queryKey: toQueryKeyArray(key), refetchType: "active" },
+          { throwOnError: true },
+        )
+        .catch((error) => {
+          throw new QueryRefetchFailureError(key, error);
+        }),
+    ),
+  );
+
+  const firstRejection = results.find(
+    (result): result is PromiseRejectedResult => result.status === "rejected",
+  );
+  if (firstRejection) throw firstRejection.reason;
 }
 
 /**
