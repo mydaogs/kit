@@ -120,7 +120,12 @@ export function classifyProjectionFailure(error: unknown): ClassifiedFailure {
       retryable: true,
       // One cycle only — enough for a commit race to settle, not enough for a
       // truly missing referent to retry forever.
-      maxAttempts: 1,
+      //
+      // 2, not 1: the claim increments before the handler runs, so the first
+      // failure reports `attemptCount: 1`, and `computeRetryAt` terminates on
+      // `attemptCount >= maxAttempts`. A cap of 1 dead-letters that first
+      // failure with no retry at all — the opposite of the intent above.
+      maxAttempts: 2,
       lastErrorPrefix: "ORPHANED",
     };
   }
