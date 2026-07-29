@@ -83,6 +83,15 @@ If a doc describes one package's behaviour, it belongs in that package and is en
 3. Delete any doc whose stack choice the project does not adopt
 4. Fill the `units/` inventories — they ship as empty templates on purpose
 5. Add project-specific `product/`, `runbooks/`, and domain feature docs alongside
+6. In each copied folder's `README.md`, add a section listing which of its docs
+   came from here and which upstream file each one tracks
+
+Step 6 is what keeps the copy honest. Once the placeholders are replaced a
+copied doc reads as the project's own, and nothing tells a reader that a fuller
+version exists upstream, or that a fix belongs upstream rather than locally.
+Record it in the folder `README.md` rather than as a banner on each file — per
+`rules/docs-rules.md`, that is where readers are told to start, and a per-file
+banner restates the same fact once per file and goes stale one file at a time
 
 ## What is deliberately absent
 
