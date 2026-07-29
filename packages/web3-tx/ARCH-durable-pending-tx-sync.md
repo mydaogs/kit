@@ -47,6 +47,20 @@ Supersession is resolved twice, separately, for visibility and for blocking. A t
 
 A terminal warning stays visible but never blocks. It is a badge, not a lock: refusing to let the user retry a failed reconciliation would strand them with no way forward
 
+## The watcher
+
+A write hook holds its transaction while its surface is mounted. When that surface navigates away — or the tab was closed and reopened — the durable record is all that is left, and `createPendingTxWatcher` is what carries it to settlement. Without it a confirmed transaction silently never invalidates the reads it was meant to refresh
+
+Records are claimed through the same per-hash Web Lock the write hook uses, so exactly one tab reconciles a given transaction. The record is re-checked *after* the lock is acquired: another tab may have settled it while this one sat in the queue, and resuming a settled transaction re-runs its invalidation against nothing
+
+`selectWatchableEntries` decides eligibility, and it is deliberately about ownership and lifecycle only — never a presentation field. A record is skipped when its phase is terminal (`warning` is a badge the user acts on, not work to resume), when a live hook in this tab still owns it, or when it belongs to a different account. Nothing else disqualifies it
+
+Filtering that source on display copy is a specific trap worth naming: a write persists a record whether or not it supplied a success message, so conditioning on one strands every write that did not — no reload recovery, no cross-tab recovery, no retry, just a record sitting until the TTL while the reads it should have refreshed stay stale
+
+The retry timer wakes once, at the soonest `nextRetryAt` among visible records. Polling would either burn renders or miss the deadline
+
+On unmount the watcher dismisses its toast but releases the lock **only when it is not mid-reconciliation** — durable settlement has to finish, and handing the lock over midway would let a second tab restart work already in flight
+
 ## Sync contention
 
 "The backend is already syncing this transaction" is contention, not failure. The lease is held by an indexer run that will finish, so failing on the first such response surfaces a spurious refresh warning for a transaction that is already final onchain, and leaves the projected reads stale until something else happens to invalidate them

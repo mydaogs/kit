@@ -30,6 +30,8 @@ import {
   buildPendingTxConflictKey,
   createBudgetedTxSync,
   invalidateQueryKeys,
+  selectWatchableEntries,
+  selectDueEntries,
 } from "@mydaogs/web3-tx";
 import { partitionTags, dedupeTags } from "@mydaogs/cache-handler";
 
@@ -507,6 +509,101 @@ for (const [name, tier] of Object.entries(CACHE_TIMES)) {
     ],
   });
   assert.equal(seen.length, 2);
+}
+
+// watcher eligibility: ownership and lifecycle only, never presentation
+{
+  const rec = (
+    hash: string,
+    over: Partial<{
+      phase: "pending" | "reconciling" | "warning";
+      account: `0x${string}` | null;
+      successMessage: string;
+      nextRetryAt: number;
+    }> = {},
+  ) => ({
+    version: 1 as const,
+    hash: hash as `0x${string}`,
+    timestamp: 100,
+    phase: over.phase ?? ("pending" as const),
+    account: over.account ?? null,
+    reconciliationMode: "invalidate-only" as const,
+    queryKeysToInvalidate: [],
+    retryCount: 0,
+    pendingItems: [
+      { entityType: "lot", entityId: "l1", conflictKey: "terms", actionKey: "a", variant: "replace" as const },
+    ],
+    ...(over.successMessage !== undefined ? { successMessage: over.successMessage } : {}),
+    ...(over.nextRetryAt !== undefined ? { nextRetryAt: over.nextRetryAt } : {}),
+  });
+
+  const never = () => false;
+  const hashesOf = (entries: Array<{ hash: string }>) =>
+    entries.map((e) => e.hash).sort();
+
+  // A record without a success string is still work. Filtering the watcher's
+  // source on presentation copy stranded the majority of writes.
+  {
+    const store = {
+      a: rec("0xa"),
+      b: rec("0xb", { successMessage: "done" }),
+    } as never;
+    assert.deepEqual(
+      hashesOf(selectWatchableEntries({ store, isLiveOwner: never })),
+      ["0xa", "0xb"],
+    );
+  }
+
+  // Terminal warnings and live-owned records are not resumable.
+  {
+    const store = {
+      a: rec("0xa"),
+      b: rec("0xb", { phase: "warning" }),
+      c: rec("0xc"),
+    } as never;
+    assert.deepEqual(
+      hashesOf(
+        selectWatchableEntries({ store, isLiveOwner: (h) => h === "0xc" }),
+      ),
+      ["0xa"],
+    );
+  }
+
+  // Account scoping: a disconnected visitor resumes only account-less records.
+  {
+    const mine = "0xAAAA000000000000000000000000000000000000" as `0x${string}`;
+    const store = {
+      a: rec("0xa"),
+      b: rec("0xb", { account: mine }),
+      c: rec("0xc", { account: "0xBBBB000000000000000000000000000000000000" }),
+    } as never;
+    assert.deepEqual(
+      hashesOf(selectWatchableEntries({ store, account: null, isLiveOwner: never })),
+      ["0xa"],
+    );
+    // Case-insensitive, so a checksum difference cannot strand a record.
+    assert.deepEqual(
+      hashesOf(
+        selectWatchableEntries({
+          store,
+          account: mine.toLowerCase() as `0x${string}`,
+          isLiveOwner: never,
+        }),
+      ),
+      ["0xa", "0xb"],
+    );
+  }
+
+  // Scheduled retries are held back until due.
+  {
+    const now = 1_000_000;
+    const entries = [
+      rec("0xa"),
+      rec("0xb", { nextRetryAt: now - 1 }),
+      rec("0xc", { nextRetryAt: now + 5000 }),
+    ] as never;
+    assert.deepEqual(hashesOf(selectDueEntries(entries, now)), ["0xa", "0xb"]);
+  }
 }
 
 console.log("all regression assertions passed");

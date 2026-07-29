@@ -7,3 +7,9 @@ export type {
 
 export { createUsePendingTxScope } from "./usePendingTxScope";
 export type { UsePendingTxScopeParams } from "./usePendingTxScope";
+
+export { createPendingTxWatcher } from "./createPendingTxWatcher";
+export type {
+  CreatePendingTxWatcherDeps,
+  PendingTxWatcherProps,
+} from "./createPendingTxWatcher";
