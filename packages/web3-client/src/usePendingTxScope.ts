@@ -1,98 +1,48 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import { buildPendingTxConflictKey } from "@mydaogs/web3-tx";
+import { selectPendingTxScope } from "@mydaogs/web3-tx";
 import type {
-  PendingTxScopeItem,
-  TxSyncEntry,
+  PendingTxScopeSelection,
   TxSyncStorage,
   TxSyncStore,
 } from "@mydaogs/web3-tx";
 
-export interface PendingTxScopeSelection {
-  /** Entity ids with any non-terminal entry, for badge rendering. */
-  readonly pendingEntityIds: ReadonlySet<string>;
-  /** All visible entries, including terminal warnings. */
-  readonly entries: readonly TxSyncEntry[];
+export interface UsePendingTxScopeParams {
+  /** Restrict to one entity type. Omit to admit every type. */
+  entityType?: string;
+  /** Ids currently on screen; entries for anything else are dropped. */
+  visibleEntityIds?: Iterable<string>;
+  /** Keep entries whose entity is not in `visibleEntityIds`. */
+  includeUnmatchedEntries?: boolean;
+  /** See `selectPendingTxScope`. `undefined` means the address is unknown. */
+  account?: `0x${string}` | null;
+  /** Whether an unknown account admits every entry. Defaults to `true`. */
+  admitUnknownAccount?: boolean;
   /**
-   * Blocking entry per `entityId:conflictKey`. Present means every control
-   * sharing that conflict key must be disabled.
+   * Gate for surfaces that must not render pending state until their own data
+   * has settled. When `false`, `visibleEntries` is empty — blocking is
+   * unaffected, because a control must stay disabled whether or not the list
+   * around it is ready.
    */
-  readonly blockingEntryByConflictKey: ReadonlyMap<string, TxSyncEntry>;
-  /**
-   * Blocking entry per exact `actionKey`. Present means *this* control was the
-   * originator and should show its own loading state.
-   */
-  readonly blockingEntryByActionKey: ReadonlyMap<string, TxSyncEntry>;
+  isReady?: boolean;
 }
 
 const EMPTY_STORE: TxSyncStore = {};
 const getServerSnapshot = (): TxSyncStore => EMPTY_STORE;
 
 /**
- * Built fresh rather than shared.
+ * Binds `selectPendingTxScope` to a storage instance and React's external-store
+ * subscription.
  *
- * `Object.freeze` does not protect a Set or Map — their contents live in
- * internal slots, so `Object.freeze(new Set()).add(x)` still mutates. A shared
- * empty singleton would therefore be poisonable by any consumer that casts away
- * the readonly types. Constructing inside `useMemo` is just as stable across
- * renders and has no shared state to protect.
- */
-const emptySelection = (): PendingTxScopeSelection => ({
-  pendingEntityIds: new Set<string>(),
-  entries: [],
-  blockingEntryByConflictKey: new Map<string, TxSyncEntry>(),
-  blockingEntryByActionKey: new Map<string, TxSyncEntry>(),
-});
-
-const sameAddress = (
-  a: string | null | undefined,
-  b: string | null | undefined,
-): boolean => {
-  if (!a || !b) return false;
-  // Wallet libraries return EIP-55 checksummed addresses, but the persisted
-  // value may have been written by a different build or a different casing
-  // convention. A case-sensitive compare silently drops the entry, leaving a
-  // control enabled while its transaction is still in flight.
-  return a.toLowerCase() === b.toLowerCase();
-};
-
-/**
- * Pure selector over the durable registry.
- *
- * Deliberately projects nothing into server data — it exposes only which
- * actions are blocked and which control is loading. That is what keeps the
- * "no render payload" invariant intact: UI still renders chain/server truth.
- *
- * A **terminal warning entry stays visible but does not block**. It is a badge,
- * not a lock: refusing to let the user retry a failed reconciliation would
- * strand them with no way forward.
+ * The account is a parameter rather than read from a wallet hook here, so the
+ * package does not force a wagmi dependency on consumers that resolve the
+ * address another way.
  */
 export function createUsePendingTxScope(storage: TxSyncStorage) {
-  return function usePendingTxScope(params?: {
-    /**
-     * Whose entries to admit.
-     *
-     * - `undefined` — address not yet known (wallet reconnecting). Admits
-     *   everything, so a control does not flicker back to enabled mid-reconnect
-     * - `null` — explicitly disconnected. Admits only entries that were
-     *   themselves recorded without an account, so a disconnected visitor never
-     *   observes another wallet's pending state on a shared browser
-     * - an address — admits entries recorded without an account, plus entries
-     *   matching case-insensitively
-     */
-    account?: `0x${string}` | null;
-    /**
-     * Whether `account: undefined` admits entries from every account.
-     * Defaults to `true`, which keeps a control from flickering back to enabled
-     * while a wallet reconnects.
-     *
-     * Set `false` on a shared-device surface: the window is narrow (only while
-     * the address resolves) but during it a visitor does observe the previous
-     * wallet's pending state.
-     */
-    admitUnknownAccount?: boolean;
-  }): PendingTxScopeSelection {
+  return function usePendingTxScope(
+    params: UsePendingTxScopeParams = {},
+  ): PendingTxScopeSelection {
     const store = useSyncExternalStore<TxSyncStore>(
       storage.subscribe,
       storage.getSnapshot,
@@ -100,56 +50,45 @@ export function createUsePendingTxScope(storage: TxSyncStorage) {
       getServerSnapshot,
     );
 
-    const account = params?.account;
-    const admitUnknownAccount = params?.admitUnknownAccount ?? true;
+    const {
+      entityType,
+      visibleEntityIds,
+      includeUnmatchedEntries,
+      account,
+      admitUnknownAccount,
+      isReady = true,
+    } = params;
 
-    return useMemo<PendingTxScopeSelection>(() => {
-      const allEntries = Object.values(store);
-      if (allEntries.length === 0) return emptySelection();
+    // Callers pass a fresh array literal or Set on most renders, so identity is
+    // not a usable dependency. Key on content instead — JSON rather than a
+    // delimiter join, because an entity id may contain the delimiter and
+    // because `[].join(" ")` and `[""].join(" ")` are the same string.
+    const visibleIdsKey = visibleEntityIds
+      ? JSON.stringify(Array.from(visibleEntityIds).sort())
+      : null;
 
-      const pendingEntityIds = new Set<string>();
-      const blockingEntryByConflictKey = new Map<string, TxSyncEntry>();
-      const blockingEntryByActionKey = new Map<string, TxSyncEntry>();
-      const visible: TxSyncEntry[] = [];
+    return useMemo(() => {
+      const selection = selectPendingTxScope({
+        store,
+        entityType,
+        visibleEntityIds:
+          visibleIdsKey === null
+            ? undefined
+            : (JSON.parse(visibleIdsKey) as string[]),
+        includeUnmatchedEntries,
+        account,
+        admitUnknownAccount,
+      });
 
-      const admits = (entry: TxSyncEntry): boolean => {
-        if (account === undefined) return admitUnknownAccount;
-        if (entry.account === null) return true;
-        if (account === null) return false;
-        return sameAddress(entry.account, account);
-      };
-
-      for (const entry of allEntries) {
-        if (!admits(entry)) continue;
-        visible.push(entry);
-      }
-
-      // Newest last, so a later write wins the per-key slot deterministically.
-      // Without this the winner depends on object key order, which makes an
-      // older superseded entry able to keep a control disabled indefinitely.
-      const ordered = [...visible].sort((a, b) => a.timestamp - b.timestamp);
-
-      for (const entry of ordered) {
-        const isBlocking =
-          entry.phase === "pending" || entry.phase === "reconciling";
-        if (!isBlocking) continue;
-
-        for (const item of entry.pendingItems as readonly PendingTxScopeItem[]) {
-          pendingEntityIds.add(item.entityId);
-          blockingEntryByConflictKey.set(
-            buildPendingTxConflictKey(item.entityId, item.conflictKey),
-            entry,
-          );
-          blockingEntryByActionKey.set(item.actionKey, entry);
-        }
-      }
-
-      return {
-        pendingEntityIds,
-        entries: visible,
-        blockingEntryByConflictKey,
-        blockingEntryByActionKey,
-      };
-    }, [store, account, admitUnknownAccount]);
+      return isReady ? selection : { ...selection, visibleEntries: [] };
+    }, [
+      store,
+      entityType,
+      visibleIdsKey,
+      includeUnmatchedEntries,
+      account,
+      admitUnknownAccount,
+      isReady,
+    ]);
   };
 }
