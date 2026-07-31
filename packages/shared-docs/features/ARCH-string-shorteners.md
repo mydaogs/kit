@@ -2,11 +2,11 @@
 
 ## Description
 
-Shared helpers truncate long IDs for UI readability. `truncateString` shortens plain strings, and `TruncatedString` adds tooltip and copy support. `TruncatedString` can render inline, underlines truncated trigger text by default, and lets callers disable that affordance when the surrounding UI should stay visually quiet
+Two differently-named helpers cover two different truncation needs. `truncateString` (`@mydaogs/core`) shortens opaque identifiers — transaction hashes, wallet addresses, database IDs — to a fixed leading/trailing character count. `truncateText` (`@mydaogs/ui`) truncates arbitrary display text to a caller-supplied or measured `maxLen`, cutting from the middle or the end
 
-The primary consumers are transaction hashes, wallet addresses, and database IDs surfaced in UI
+`TruncatedString` (`@mydaogs/ui/client`) wraps `truncateText` with tooltip and copy support. It can render inline, underlines truncated trigger text by default, and lets callers disable that affordance when the surrounding UI should stay visually quiet
 
 ## Related files
 
-- `<monorepo>/packages/ui/src/lib/utils/truncateString.ts`
-- `<monorepo>/packages/ui/src/components/TruncatedString/TruncatedString.tsx`
+- `truncateString` (`@mydaogs/core`)
+- `truncateText`, `TruncatedString` (`@mydaogs/ui` / `@mydaogs/ui/client`)

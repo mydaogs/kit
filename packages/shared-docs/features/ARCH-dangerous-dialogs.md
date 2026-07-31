@@ -4,7 +4,7 @@
 
 `DangerousActionDialog` is the app-wide danger-themed confirmation drawer for high-impact actions. It is fully controlled by the parent, does not auto-close on confirm, and can omit the default confirm button when callers supply custom child actions. It also supports a custom confirm label so route-specific destructive flows can keep their own CTA wording while still using the shared dialog shell
 
-It renders through the shared `DialogDrawer` with `shellType="dangerous"` rather than passing danger background classes as a `className`; a single dialog shell host applies that background whenever a `dangerous`-typed entry is topmost, so a danger confirm opened over another local dialog or an intercepted modal swaps the shared shell's background instead of stacking a second portal, and restores the previous background when it is dismissed or popped back from
+It renders through `DialogDrawer` (`@mydaogs/ui/client`) with `shellType="dangerous"` rather than passing danger background classes as a `className`; a single dialog shell host applies that background whenever a `dangerous`-typed entry is topmost, so a danger confirm opened over another local dialog or an intercepted modal swaps the shared shell's background instead of stacking a second portal, and restores the previous background when it is dismissed or popped back from
 
 ## Behavior
 
@@ -18,4 +18,4 @@ It renders through the shared `DialogDrawer` with `shellType="dangerous"` rather
 ## Related files
 
 - `<monorepo>/apps/app/src/components/DangerousActionDialog/DangerousActionDialog.tsx`
-- `<monorepo>/packages/ui/src/components/DialogShell/DialogShellHost.tsx`
+- `DialogDrawer`, `DialogShellProvider` (`@mydaogs/ui/client`) — the shell host itself is package-internal, not exported

@@ -1,0 +1,170 @@
+@import "tw-animate-css";
+
+/* Relative to this stylesheet, so it survives pnpm's symlinked node_modules
+   layout without the consumer needing to know the install path. */
+@source "./dist";
+
+:root {
+  --border-radius: 8px;
+  --box-shadow-x: 4px;
+  --box-shadow-y: 4px;
+  --reverse-box-shadow-x: -4px;
+  --reverse-box-shadow-y: -4px;
+
+  --heading-font-weight: 700;
+  --base-font-weight: 500;
+
+  --shadow: var(--box-shadow-x) var(--box-shadow-y) 0px 0px var(--border);
+}
+
+@theme inline {
+  /* CJK system fallbacks ensure consistent rendering on Chinese/Japanese/Korean devices */
+  --font-sans:
+    var(--font-sans), "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB",
+    "Noto Sans CJK SC", sans-serif;
+  --font-mono:
+    var(--font-mono), "Hiragino Sans GB", "Microsoft YaHei", monospace;
+
+  --color-main: var(--main);
+  --color-background: var(--background);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-foreground: var(--foreground);
+  --color-main-foreground: var(--main-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-overlay: var(--overlay);
+  --color-ring: var(--ring);
+
+  --color-capture-btn-active: var(--capture-btn-active);
+  --color-capture-btn-inactive: var(--capture-btn-inactive);
+
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-info: var(--info);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-system: var(--system);
+
+  --spacing-boxShadowX: var(--box-shadow-x);
+  --spacing-boxShadowY: var(--box-shadow-y);
+  --spacing-reverseBoxShadowX: var(--reverse-box-shadow-x);
+  --spacing-reverseBoxShadowY: var(--reverse-box-shadow-y);
+
+  --radius-base: var(--border-radius);
+
+  --shadow-shadow: var(--shadow);
+  --shadow-nav: 4px 4px 0px 0px var(--border);
+
+  --font-weight-base: var(--base-font-weight);
+  --font-weight-heading: var(--heading-font-weight);
+
+  --spacing-container: 1300px;
+
+  --height-nav: var(--height-nav);
+  --height-footer: var(--height-footer);
+  --height-content: var(--height-content);
+
+  /* Cormorant Unicase (Latin/Latin-ext/Cyrillic) → Cyrillic display (Russo One) → CJK system serif → generic */
+  --font-steampunk-title:
+    var(--font-cormorant-unicase), var(--font-russo-one), "PingFang SC",
+    "Microsoft YaHei", serif;
+  /* Nunito (Cyrillic/Latin-ext) → CJK system sans → generic */
+  --font-nunito:
+    var(--font-nunito-base), "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+@layer base {
+  /* Semantic surface tokens — consumers override these from unlayered :root in
+     their own variables.css, which beats @layer base regardless of import order.
+     Defaults fall back to --secondary / --border. */
+  :root {
+    --page-grid-color: var(--secondary);
+    --scrollbar-track-color: var(--secondary);
+    --sheet-grid-color: var(--secondary);
+    --capture-btn-active: var(--secondary);
+    --capture-btn-inactive: var(--border);
+  }
+
+  body {
+    @apply text-foreground font-sans font-base bg-background bg-[linear-gradient(to_right,var(--page-grid-color)_1px,transparent_1px),linear-gradient(to_bottom,var(--page-grid-color),transparent_1px)] bg-size-[70px_70px] overflow-x-clip;
+
+    min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
+  }
+}
+
+main {
+  @apply max-w-[1440px] mx-auto;
+}
+
+body,
+.scrollbar {
+  --sb-track-color: var(--scrollbar-track-color);
+  --sb-thumb-color: var(--border);
+}
+
+.scrollbar::-webkit-scrollbar {
+  width: 16px;
+}
+
+body::-webkit-scrollbar {
+  width: 20px;
+}
+
+.toc-scrollbar::-webkit-scrollbar {
+  width: 0px;
+}
+
+body::-webkit-scrollbar-track,
+.scrollbar::-webkit-scrollbar-track {
+  background: var(--sb-track-color);
+}
+
+body::-webkit-scrollbar-track {
+  border-left: 4px solid var(--sb-thumb-color);
+}
+
+body::-webkit-scrollbar-thumb,
+.scrollbar::-webkit-scrollbar-thumb {
+  background: var(--sb-thumb-color);
+}
+
+.command-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.command-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.command-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--sb-thumb-color);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  body,
+  .scrollbar {
+    scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
+  }
+
+  .command-scrollbar {
+    scrollbar-color: var(--sb-thumb-color) transparent;
+  }
+}
+
+@utility torn-top {
+  clip-path: url("#torn-top");
+}
+
+@utility torn-bottom {
+  clip-path: url("#torn-bottom");
+}

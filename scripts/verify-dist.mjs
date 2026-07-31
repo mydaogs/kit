@@ -22,15 +22,25 @@ const root = resolve(import.meta.dirname, "..");
 const packagesDir = join(root, "packages");
 
 /** Entry subpaths to import, beyond ".", keyed by package name. */
-const EXTRA_ENTRIES = { "@mydaogs/kv": ["./rest"] };
+const EXTRA_ENTRIES = {
+  "@mydaogs/kv": ["./rest"],
+  "@mydaogs/ui": ["./client", "./next"],
+};
 
 /**
  * Entries that must NOT be importable in a bare Node process, with the reason.
  * `server-only` throws by design outside a React Server Component graph, so a
- * successful import here would mean the guard had been lost.
+ * successful import here would mean the guard had been lost. Keyed by the full
+ * specifier ("pkg" for the root entry, "pkg/sub" for a subpath) so a throwing
+ * entry does not have to be the package root.
  */
 const EXPECTED_TO_THROW = {
   "@mydaogs/kv": "imports `server-only`, which must reject a non-RSC importer",
+  // next/image resolves through Next.js's own build pipeline (swc/webpack
+  // rewrite the bare specifier), not a spec-compliant Node ESM `exports` path
+  // — even importing next/image alone throws ERR_MODULE_NOT_FOUND outside a
+  // Next app. This entry is only ever consumed via a Next.js build.
+  "@mydaogs/ui/next": "imports next/image, which is not resolvable outside a Next.js build",
 };
 
 const packages = readdirSync(packagesDir).filter((name) => {
@@ -126,7 +136,17 @@ try {
   // Peers the packages declare but do not ship, pinned to the workspace's own
   // versions so the probe resolves the same tree CI type-checked against.
   const rootDev = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).devDependencies;
-  const peers = ["react", "@tanstack/react-query", "viem", "wagmi", "@upstash/redis", "server-only"];
+  const peers = [
+    "react",
+    "react-dom",
+    "next",
+    "react-hook-form",
+    "@tanstack/react-query",
+    "viem",
+    "wagmi",
+    "@upstash/redis",
+    "server-only",
+  ];
   const peerDeps = Object.fromEntries(
     peers.filter((p) => rootDev[p]).map((p) => [p, rootDev[p]]),
   );
@@ -163,7 +183,7 @@ try {
   for (const [name] of Object.entries(specifiers)) {
     for (const sub of [".", ...(EXTRA_ENTRIES[name] ?? [])]) {
       const specifier = sub === "." ? name : `${name}/${sub.replace(/^\.\//, "")}`;
-      const expectedToThrow = sub === "." && EXPECTED_TO_THROW[name];
+      const expectedToThrow = EXPECTED_TO_THROW[specifier];
       let error = null;
       try {
         execFileSync(

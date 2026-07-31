@@ -1,6 +1,6 @@
 # ARCH - Toast Lifecycle Controls
 
-A shared toast wrapper in `@shared/ui` exposes three toast lifecycle modes behind the plain `toast.*` call signature
+A shared toast wrapper in `@mydaogs/ui/client` exposes three toast lifecycle modes behind the plain `toast.*` call signature
 
 ## Overview
 
@@ -32,7 +32,7 @@ The effects component that runs URL/auth-error hooks and mounts the pending-tran
 
 ## Related files
 
-- `<monorepo>/packages/ui/src/components/sonner.tsx`
+- `Toaster`, `toast` (`@mydaogs/ui/client`)
 - `<monorepo>/apps/app/src/app/layout.tsx`
 - `<monorepo>/apps/app/src/components/AppProviders/AppToastEffects.tsx`
 - `<monorepo>/apps/app/src/lib/hooks/useGuardToastLifecycle.ts`

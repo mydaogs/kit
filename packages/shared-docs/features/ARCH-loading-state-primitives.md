@@ -16,6 +16,6 @@ This improves consistency, keeps loading visuals uniform, and centralizes future
 
 ## Related files
 
-- `<monorepo>/packages/ui/src/components/StatusCard/StatusCardLoading.tsx`
-- `<monorepo>/packages/ui/src/components/LoadingButton/LoadingButton.tsx`
+- `StatusCardLoading` (`@mydaogs/ui/client`)
+- `LoadingButton` (`@mydaogs/ui/client`)
 - `rules/loading-state-rules.md`
