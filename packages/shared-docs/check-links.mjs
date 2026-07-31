@@ -13,12 +13,21 @@ import { fileURLToPath } from "node:url";
 const root = dirname(fileURLToPath(import.meta.url));
 const LINK = /\]\((\.{0,2}\/?[A-Za-z0-9_./-]+\.md)(#[^)]*)?\)/g;
 
+/**
+ * A template's links are written to resolve where it is copied to — the
+ * consumer's `docs/` — not where it ships from. Checking them here would demand
+ * this package carry a `product/` and a `runbooks/` it deliberately does not
+ * ship. `check-docs-adoption.mjs` is what verifies them, in the repo that
+ * adopted the template.
+ */
+const TEMPLATES = new Set(["docs-readme-template.md"]);
+
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     if (entry === "node_modules" || entry.startsWith(".")) continue;
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) walk(full, out);
-    else if (entry.endsWith(".md")) out.push(full);
+    else if (entry.endsWith(".md") && !TEMPLATES.has(relative(root, full))) out.push(full);
   }
   return out;
 }

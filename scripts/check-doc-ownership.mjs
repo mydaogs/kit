@@ -13,9 +13,11 @@
  * straight into the published tarballs.
  *
  * Cross-cutting patterns that genuinely belong to no single package live in
- * shared-docs, which is exempt: describing app architecture is its entire job.
+ * shared-docs, which is exempt from the *pattern* half of this check: describing
+ * app architecture is its entire job. It is not exempt from the *index* half —
+ * see checkSharedDocsIndexes below.
  */
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
 const packagesDir = resolve(import.meta.dirname, "..", "packages");
@@ -89,13 +91,84 @@ for (const pkg of readdirSync(packagesDir)) {
   }
 }
 
+/**
+ * shared-docs ships four indexed folders, and each folder README is the index a
+ * reader is told to start from. Exempting the package outright left those four
+ * indexes unchecked, and they drifted: the features index listed 31 blueprints
+ * while the folder shipped 21, with no pointer saying the other 10 had moved
+ * out to their packages. The reader could not act on the entry at all.
+ *
+ * The index and the folder must agree, with exactly two escapes, both of which
+ * have to name where the doc actually is:
+ *
+ *   `name.md` → `@mydaogs/<package>`   ships with that package
+ *   `name.md` → project-authored        no upstream copy; written per project
+ *
+ * A bare name with no file and no marker is the failure this catches.
+ */
+const sharedDocsDir = join(packagesDir, "shared-docs");
+const INDEXED_FOLDERS = ["rules", "decisions", "features", "units"];
+/** `` `name.md` `` in the index, or a markdown link to one. */
+const DOC_REF = /(?:`([A-Za-z0-9._/-]+\.md)`|\]\(([A-Za-z0-9._/-]+\.md)(?:#[^)]*)?\))/g;
+
+for (const folder of INDEXED_FOLDERS) {
+  const dir = join(sharedDocsDir, folder);
+  const readmePath = join(dir, "README.md");
+
+  if (!existsSync(readmePath)) {
+    failures.push(`shared-docs/${folder}: no README.md — the folder index is the entry point`);
+    continue;
+  }
+
+  const onDisk = new Set(
+    readdirSync(dir)
+      .filter((f) => f.endsWith(".md") && f !== "README.md"),
+  );
+  const covered = new Set();
+
+  for (const line of readFileSync(readmePath, "utf8").split("\n")) {
+    // Both escapes are line-scoped on purpose: the pointer has to sit next to
+    // the name it excuses, not somewhere else in the document.
+    const namesElsewhere = /@mydaogs\/[a-z-]+|project-authored/.test(line);
+
+    for (const match of line.matchAll(DOC_REF)) {
+      const ref = (match[1] ?? match[2]).replace(/^\.\//, "");
+
+      // A reference into another folder is a cross-link, not an index entry.
+      // It still has to resolve — from this folder, or from the docs root.
+      if (ref.includes("/")) {
+        if (!existsSync(join(dir, ref)) && !existsSync(join(sharedDocsDir, ref))) {
+          failures.push(`shared-docs/${folder}/README.md: references ${ref}, which does not exist`);
+        }
+        continue;
+      }
+
+      if (onDisk.has(ref)) {
+        covered.add(ref);
+      } else if (!namesElsewhere) {
+        failures.push(
+          `shared-docs/${folder}/README.md: indexes ${ref}, which is not in the folder and names no owner ` +
+            `(add \`→ @mydaogs/<package>\` or \`→ project-authored\`)`,
+        );
+      }
+    }
+  }
+
+  for (const f of onDisk) {
+    if (!covered.has(f)) {
+      failures.push(`shared-docs/${folder}/${f}: shipped but not indexed in the folder README`);
+    }
+  }
+}
+
 if (failures.length > 0) {
-  console.error(`Package docs describe things the package does not own (${failures.length}):`);
+  console.error(`Doc ownership check failed (${failures.length}):`);
   for (const f of failures) console.error(`  - ${f}`);
   console.error(
-    "\nMove app architecture to shared-docs, or rewrite the doc against the package's exports.",
+    "\nMove app architecture to shared-docs, rewrite the doc against the package's exports,\n" +
+      "or point the index entry at the package that owns it.",
   );
   process.exit(1);
 }
 
-console.log("Package docs own only their package");
+console.log("Package docs own only their package, and every shared-docs index agrees with its folder");

@@ -1,6 +1,6 @@
 {
   "name": "@mydaogs/shared-docs",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "Cross-cutting engineering docs for the kit: rules, architecture decisions, and patterns that belong to no single package",
   "license": "MIT",
   "repository": {
@@ -16,9 +16,13 @@
     "decisions",
     "features",
     "units",
-    "README.md"
+    "README.md",
+    "docs-readme-template.md",
+    "check-links.mjs",
+    "check-docs-adoption.mjs"
   ],
   "scripts": {
-    "check-links": "node ./check-links.mjs"
+    "check-links": "node ./check-links.mjs",
+    "check-docs-adoption": "node ./check-docs-adoption.mjs"
   }
 }

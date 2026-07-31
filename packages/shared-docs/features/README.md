@@ -14,35 +14,37 @@
 
 Only `ARCH-*` docs are carried between projects. `STORY-*` docs describe user stories and are by definition project-specific — write them fresh in each repo, alongside these
 
+The list below covers every blueprint the kit carries, including the ones that ship **with a package** rather than in this folder. An entry marked `→ @mydaogs/<package>` lives at that package's root and renders on its npm page; read it there. The list is one index, not one directory listing, so a reader finds the doc without knowing which half of the kit it landed in
+
 ## Features list (file name + one sentence short description)
 
 ### Web3 (7)
 
 1. `ARCH-wagmi-integration.md` - Wallet connectivity with wagmi + Reown AppKit, SSR-safe and env-driven
-2. `ARCH-network-config.md` - Centralized chain selection driven by env config
-3. `ARCH-env-config-split.md` - Client/server environment variable separation with Zod validation
-4. `ARCH-contract-write-wrapper.md` - `useAppWriteContract` wrapping wagmi with toast lifecycle, reconciliation, and query invalidation
-5. `ARCH-durable-pending-tx-sync.md` - Durable pending transaction registry with reconciliation, toast recovery, and cross-tab action blocking
-6. `ARCH-pending-transactions.md` - Persisting blockchain transaction tracking across refreshes
+2. `ARCH-network-config.md` → `@mydaogs/web3` - Centralized chain selection driven by env config
+3. `ARCH-env-config-split.md` → `@mydaogs/web3` - Client/server environment variable separation with Zod validation
+4. `ARCH-contract-write-wrapper.md` → `@mydaogs/web3-client` - `useAppWriteContract` wrapping wagmi with toast lifecycle, reconciliation, and query invalidation
+5. `ARCH-durable-pending-tx-sync.md` → `@mydaogs/web3-tx` - Durable pending transaction registry with reconciliation, toast recovery, and cross-tab action blocking
+6. `ARCH-pending-transactions.md` → `@mydaogs/web3-tx` - Persisting blockchain transaction tracking across refreshes
 7. `ARCH-web3-buttons.md` - Forcing wallet connection and registered-address checks before onchain operations
 
 ### Indexing (1)
 
-8. `ARCH-event-processing-pipeline.md` - Event processor with atomic deduplication, retries, ordering guards, and a terminal-failure taxonomy
+8. `ARCH-event-processing-pipeline.md` → `@mydaogs/indexer` - Event processor with atomic deduplication, retries, ordering guards, and a terminal-failure taxonomy
 
 ### Data Fetching & Caching (5)
 
 9. `ARCH-react-cache-pattern.md` - Server-side caching layers: React `cache()` and `"use cache"` with tags
 10. `ARCH-data-layer-modules.md` - Organized server-only data modules under `src/data` with domain folders
 11. `ARCH-tanstack-query-integration.md` - Client-side query management with TanStack Query and gated persistence
-12. `ARCH-query-invalidation-pattern.md` - Automatic query invalidation on blockchain transactions
+12. `ARCH-query-invalidation-pattern.md` → `@mydaogs/web3-client` - Automatic query invalidation on blockchain transactions
 13. `ARCH-query-error-boundary.md` - TanStack Query error boundary with reset and auth redirect
 
 ### API & Server Actions (6)
 
-14. `ARCH-backend-api-contract.md` - Versioned backend route contract and transport rules
-15. `ARCH-api-response-wrapper.md` - Standardized response creation utilities for routes and actions
-16. `ARCH-app-business-error.md` - Custom error class with status codes and localized code resolution
+14. `ARCH-backend-api-contract.md` → `@mydaogs/contract` - Versioned backend route contract and transport rules
+15. `ARCH-api-response-wrapper.md` → `@mydaogs/contract` - Standardized response creation utilities for routes and actions
+16. `ARCH-app-business-error.md` → `@mydaogs/contract` - Custom error class with status codes and localized code resolution
 17. `ARCH-server-actions-pattern.md` - Server actions with authentication, permissions, and cache invalidation
 18. `ARCH-cron-auth-middleware.md` - Constant-time comparison authentication for cron endpoints
 19. `ARCH-webhook-signature-verification.md` - HMAC SHA256 signature validation for webhooks

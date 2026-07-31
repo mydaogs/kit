@@ -1,12 +1,12 @@
 {
   "name": "@mydaogs/workspace",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "private": true,
   "type": "module",
   "description": "Portable package kit for Next.js + web3 projects",
   "scripts": {
     "check-types": "pnpm -r check-types",
-    "lint": "eslint packages/*/src scripts --max-warnings 0",
+    "lint": "eslint packages/*/src packages/shared-docs/*.mjs scripts --max-warnings 0",
     "check:cache-handlers": "node scripts/check-cache-handlers.mjs",
     "check:bare-revalidate": "node scripts/check-no-bare-revalidate.mjs",
     "verify": "tsx scripts/smoke.ts && tsx scripts/smoke-dom.ts",

@@ -4,6 +4,7 @@
 
 - All _General Rules_ must be listed in this current file list below for easy navigation. Keep this list updated
 - _General Rules_ file must be structured following a template below
+- An entry marked `→ @mydaogs/<package>` ships with that package rather than in this folder; read it at the package root
 
 ## Template for documenting General Rules
 
@@ -26,7 +27,7 @@
 10. `pagination-rules.md` - Rules for cursor pagination, lazy infinite scrolling, and approved exceptions
 11. `admin-actions-rules.md` - Rules requiring wallet-signature submission and onchain role verification for all admin actions
 12. `prisma-mongodb-rules.md` - Rules for avoiding null-vs-missing filter pitfalls and intra-handler retry loops when using Prisma with MongoDB
-13. `bigint-serialization-rules.md` - Rules for serializing and consuming `bigint` values across JSON boundaries
+13. `bigint-serialization-rules.md` → `@mydaogs/core` - Rules for serializing and consuming `bigint` values across JSON boundaries
 14. `tabs-query-param-rules.md` - Rules for URL-synced tab state
 15. `contract-lifecycle-rules.md` - Rules coupling contract deploys/upgrades with database prunes, webhook regeneration, and the indexer cold-start floor
 16. `dev-phase-state-rules.md` - Rules forbidding old-vs-current documentation and requiring a version bump instead of a migration while data is disposable

@@ -150,7 +150,7 @@ These are the non-obvious properties. Changing them silently breaks correctness 
 
 ## Verification
 
-`pnpm check` runs four things:
+`pnpm check` runs five things:
 
 - `check-types` — all 8 packages under `strict` with `noUncheckedIndexedAccess`
 - `lint` — eslint flat config across every package and script, `--max-warnings 0`
@@ -158,6 +158,7 @@ These are the non-obvious properties. Changing them silently breaks correctness 
   - [`scripts/smoke.ts`](scripts/smoke.ts) — bigint round-trip fidelity (including that look-alike strings survive), error-envelope code preservation and message sanitization, redaction leaking nothing, public-path rejection, backoff dead-lettering vs status-gap persistence, ordering watermarks, failure classification, sync recovery posture per status code, chain-scoped event hashing, tag partitioning, plus a regression block pinning every bug found in review
   - [`scripts/smoke-dom.ts`](scripts/smoke-dom.ts) — storage-layer regressions against a fake `localStorage`: a stale record must not hide the record that follows it, and an unrecognized vocabulary must be rejected and purged rather than repaired
 - `check-links` — every relative markdown link across the docs resolves to a file that exists
+- `check:doc-ownership` — a package doc describes only its own package, and every `shared-docs` folder index agrees with its folder: nothing shipped goes unlisted, and nothing listed is missing without naming the package that owns it
 
 `pnpm verify:dist` is separate and runs after `pnpm build`, in CI and again
 before any publish. It packs every package, installs the tarballs into a
@@ -186,6 +187,14 @@ pnpm check:bare-revalidate ../<monorepo>/apps/backend/src
 
 - `check-cache-handlers.mjs` — every `cacheComponents` app registers the handler *and* traces it in `outputFileTracingIncludes`
 - `check-no-bare-revalidate.mjs` — backend-only writers do not call bare `revalidateTag`, with an `// allow:` escape hatch on the call line or the line above
+
+A third targets a consuming repo but **ships** rather than being copied, because a docs tree drifts from the day it is adopted and a copied checker is one more thing to keep in sync:
+
+```bash
+node node_modules/@mydaogs/shared-docs/check-docs-adoption.mjs docs
+```
+
+It holds the adopted tree to the structure in [`rules/docs-rules.md`](packages/shared-docs/rules/docs-rules.md): one entry point linking every folder, an index per folder that agrees with the folder, an upstream ownership record in each carried folder, the four decisions no kit can write, and no surviving path placeholder
 
 Both fail loudly when they scan zero files. A guard that cannot distinguish "no violations" from "scanned nothing" reports success forever after a directory move — which is its own failure mode, and the first thing to check when one of these goes green unexpectedly.
 

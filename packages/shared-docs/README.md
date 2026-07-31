@@ -50,6 +50,11 @@ Package names (`@shared/ui`, `@shared/db`, `@shared/backend-contract`, `@shared/
 - [`decisions/README.md`](decisions/README.md) - architecture decisions and system structure
 - [`features/README.md`](features/README.md) - reusable architecture blueprints
 - [`units/README.md`](units/README.md) - reusable code unit tracking (components, hooks, utils, types)
+- [`docs-readme-template.md`](docs-readme-template.md) - the `docs/README.md` entry point to copy, since nothing upstream can write it
+- `check-docs-adoption.mjs` - CI check that the adopted tree still has an entry point, an index per folder, an ownership record, and no surviving path placeholder
+- `check-links.mjs` - CI check that every relative markdown link resolves
+
+The four folder indexes list every doc the kit carries, including the ones that ship with a package. An entry marked `→ @mydaogs/<package>` is read at that package's root
 
 ## What lives with its package
 
@@ -79,19 +84,29 @@ If a doc describes one package's behaviour, it belongs in that package and is en
 ## Adopting this kit
 
 1. Copy the four folders into the new repo's `docs/`
-2. Find-and-replace the placeholders from the table above
-3. Delete any doc whose stack choice the project does not adopt
-4. Fill the `units/` inventories — they ship as empty templates on purpose
-5. Add project-specific `product/`, `runbooks/`, and domain feature docs alongside
-6. In each copied folder's `README.md`, add a section listing which of its docs
-   came from here and which upstream file each one tracks
+2. Copy [`docs-readme-template.md`](docs-readme-template.md) to `docs/README.md` and
+   trim it to the folders the project actually has
+3. Find-and-replace the placeholders from the table above
+4. Delete any doc whose stack choice the project does not adopt, and its index entry
+5. Fill the `units/` inventories — they ship as empty templates on purpose
+6. Add project-specific `product/`, `runbooks/`, and domain feature docs alongside,
+   plus the four decisions in [`decisions/README.md`](decisions/README.md) that every
+   project writes for itself
+7. In each copied folder's `README.md`, add a section listing which of its docs
+   came from here, which upstream file each one tracks, and which side to edit
+8. Wire the check into CI:
+   `node node_modules/@mydaogs/shared-docs/check-docs-adoption.mjs docs`
 
-Step 6 is what keeps the copy honest. Once the placeholders are replaced a
+Step 7 is what keeps the copy honest. Once the placeholders are replaced a
 copied doc reads as the project's own, and nothing tells a reader that a fuller
 version exists upstream, or that a fix belongs upstream rather than locally.
 Record it in the folder `README.md` rather than as a banner on each file — per
-`rules/docs-rules.md`, that is where readers are told to start, and a per-file
-banner restates the same fact once per file and goes stale one file at a time
+[`rules/docs-rules.md`](rules/docs-rules.md), that is where readers are told to
+start, and a per-file banner restates the same fact once per file and goes stale
+one file at a time
+
+Step 8 is what keeps steps 2 through 7 from silently coming undone. The full
+structure it enforces is stated in [`rules/docs-rules.md`](rules/docs-rules.md)
 
 ## What is deliberately absent
 

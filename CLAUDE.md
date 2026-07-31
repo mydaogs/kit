@@ -73,10 +73,19 @@ Note that [`packages/shared-docs/rules/testing-rules.md`](packages/shared-docs/r
 
 [`scripts/check-doc-ownership.mjs`](scripts/check-doc-ownership.mjs) fails `pnpm check` when:
 
-- A package doc (root or nested, at any depth) mentions `<monorepo>`, `apps/<name>`, the product name, or `@shared/`. Those mean the doc is describing somebody's app, not this package. Move it to `shared-docs`, which is exempt — describing app architecture is its whole job
+- A package doc (root or nested, at any depth) mentions `<monorepo>`, `apps/<name>`, the product name, or `@shared/`. Those mean the doc is describing somebody's app, not this package. Move it to `shared-docs`, which is exempt from *this* half — describing app architecture is its whole job
 - A shipped `.md` is not linked from its package README as `](./name.md)`, or the README links one that does not exist
+- A `shared-docs` folder index (`rules`, `decisions`, `features`, `units`) disagrees with its folder. Every `.md` in the folder must be indexed, and every indexed name that is *not* in the folder must say where it is on the same line — `` `name.md` → `@mydaogs/<package>` `` or `` `name.md` → project-authored ``. Half the kit's blueprints ship with their package, so the index is one list across both halves rather than a directory listing
 
-`pnpm check-links` resolves every relative markdown link under `packages/shared-docs`
+`pnpm check-links` resolves every relative markdown link under `packages/shared-docs`. [`docs-readme-template.md`](packages/shared-docs/docs-readme-template.md) is skipped there on purpose — its links resolve in the consumer's `docs/`, not here
+
+[`packages/shared-docs/check-docs-adoption.mjs`](packages/shared-docs/check-docs-adoption.mjs) is the consumer-side counterpart and is **not** wired into `pnpm check` — there is no docs tree here to scan. It ships in the tarball rather than being copied, and is run against an adopted `docs/`:
+
+```bash
+node packages/shared-docs/check-docs-adoption.mjs ../<some-repo>/docs
+```
+
+When editing any of the four `shared-docs` folders, the index entry is part of the change — adding, renaming, moving, or deleting a doc without touching the folder `README.md` fails `pnpm check`
 
 When writing docs here, follow the repo's own rules:
 
