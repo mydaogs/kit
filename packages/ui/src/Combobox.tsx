@@ -14,7 +14,20 @@ import type { GetComponentProps } from "./types";
 import { cn } from "./cn";
 import { Check, ChevronDown, Plus } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { z } from "zod";
+
+/**
+ * The subset of a zod schema's `.safeParse()` contract Combobox actually
+ * uses. Structural rather than `z.ZodSchema` so the package carries no
+ * runtime or type-level zod dependency — any zod major version's schema
+ * satisfies this shape, and callers never need a matching zod install just
+ * to type a `validationSchema` prop.
+ */
+export interface ComboboxValidationSchema {
+  safeParse: (value: unknown) => {
+    success: boolean;
+    error?: { errors: Array<{ message?: string }> };
+  };
+}
 
 interface ComboboxProps extends GetComponentProps<typeof Button> {
   value: string;
@@ -27,7 +40,7 @@ interface ComboboxProps extends GetComponentProps<typeof Button> {
   // Add new item functionality
   onCreateNew?: (_: string) => Promise<void>;
   createNewLabel?: (_: string) => string;
-  validationSchema?: z.ZodSchema;
+  validationSchema?: ComboboxValidationSchema;
   isCreating?: boolean;
   minSearchLength?: number;
   allowClear?: boolean;
@@ -90,7 +103,7 @@ export const Combobox = (props: ComboboxProps) => {
     if (result.success) {
       return null;
     }
-    return result.error.errors[0]?.message || "Invalid input";
+    return result.error?.errors[0]?.message || "Invalid input";
   }, [searchQuery, validationSchema]);
 
   // Check if we should show "add new" option

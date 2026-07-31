@@ -15,7 +15,8 @@ npm install @mydaogs/ui
 | `react`, `react-dom` | yes | `^18` or `^19` |
 | `next` | optional | only needed to use `@mydaogs/ui/next` (`AppImage`, `AppImagePreview*`, `createCrossAppLink`, `FooterShell`) |
 | `react-hook-form` | optional | only needed to use `@mydaogs/ui/form` |
-| `zod` | optional | only needed to use `Combobox`'s `validationSchema` prop (`@mydaogs/ui/client`) |
+
+`Combobox`'s `validationSchema` prop (`@mydaogs/ui/client`) takes anything implementing a minimal `safeParse` shape — any zod schema satisfies it, but the package carries no zod dependency of its own at any version.
 
 ## Entry points
 

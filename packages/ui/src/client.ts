@@ -137,6 +137,7 @@ export type { CaptureBtnProps } from "./CaptureBtn";
 export { StatusCardLoading } from "./StatusCardLoading";
 export { InfoCardAccordion } from "./InfoCardAccordion";
 export { Combobox } from "./Combobox";
+export type { ComboboxValidationSchema } from "./Combobox";
 export { ToggleStateField } from "./ToggleStateField";
 export { TooltipPopover } from "./TooltipPopover";
 export { TruncatedString } from "./TruncatedString";

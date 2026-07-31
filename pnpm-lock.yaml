@@ -307,9 +307,6 @@ importers:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
-      zod:
-        specifier: 3.24.0
-        version: 3.24.0
 
   packages/web3:
     devDependencies:
