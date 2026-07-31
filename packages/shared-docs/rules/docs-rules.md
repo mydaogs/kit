@@ -12,7 +12,7 @@ These rules define where docs live, how a reader reaches them, and how a copied 
 
 ## Tree structure
 
-- `docs/` at the **repository root** is the only documentation folder. Never create a `docs/` directory inside a workspace, app, or package. A second tree splits the answer to "where is this documented" into two places, and the one nobody checks goes stale unobserved
+- `docs/` at the **repository root** is the only documentation folder, and sits beside the workspaces rather than inside one. A repo may hold several workspaces or none that are npm at all, so the root is the only level every project shares. Never create a `docs/` directory inside a workspace, app, or package: a second tree splits the answer to "where is this documented" into two places, and the one nobody checks goes stale unobserved. Both halves of this are enforced — see [Enforcement](#enforcement)
 - A reusable package documents itself in root-level markdown next to its `package.json` (`README.md` and siblings). That is not a `docs/` directory, and it is what npm renders
 - `docs/README.md` is the entry point and the only file that indexes the folders. It carries a table of contents linking every folder's `README.md`, and a recommended reading order. Adopt it from [`docs-readme-template.md`](../docs-readme-template.md)
 - Four folders are carried from this kit and keep their names: `rules/`, `decisions/`, `features/`, `units/`
@@ -49,9 +49,29 @@ These rules define where docs live, how a reader reaches them, and how a copied 
 
 ## Enforcement
 
-These are checks, not conventions. Wire both into CI:
+These are checks, not conventions. A broken index, a dangling link, or a second docs tree is silent otherwise — the doc still renders, it just sends the reader nowhere
 
-- `node node_modules/@mydaogs/shared-docs/check-docs-adoption.mjs docs` — entry point links every folder, every folder indexes itself, every doc is indexed, carried folders carry an ownership record, the four project-authored decisions exist, and no path placeholder survived
-- `node node_modules/@mydaogs/shared-docs/check-links.mjs` is the kit's own link check; point an equivalent at `docs/` so every relative markdown link resolves
+`docs/` sits at the repository root, above the workspaces. That level owns the docs and is the level the checks run from, so it carries a `package.json` whose only job is repo-level tooling — no app, no build, no source:
 
-A broken index or a dangling link is silent otherwise — the doc still renders, it just sends the reader nowhere
+```json
+{
+  "name": "<project>-repo",
+  "private": true,
+  "scripts": {
+    "check:docs": "check-docs-adoption docs",
+    "check:docs-links": "check-docs-links docs"
+  },
+  "devDependencies": {
+    "@mydaogs/shared-docs": "^0.6.6"
+  }
+}
+```
+
+A workspace's own `package.json` is the wrong home for this. It would make the docs gate depend on that workspace still existing and still being the one that happens to install the kit, when what is being checked sits outside every workspace
+
+- `check:docs` — `docs/` is at the repository root and is the only docs tree, the entry point links every folder, every folder indexes itself, every doc is indexed, carried folders carry an ownership record, the four project-authored decisions exist, and no path placeholder survived
+- `check:docs-links` — every relative markdown link under `docs/` resolves
+
+Both fail when they scan nothing, because a guard that cannot tell "no violations" from "scanned nothing" reports success forever after a directory move
+
+Trigger CI on `docs/**` rather than on a workspace path. A guard wired to the wrong path fires when unrelated code changes and stays silent on the one change that matters

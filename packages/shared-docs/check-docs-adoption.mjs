@@ -9,16 +9,27 @@
  * and a record of what came from the kit — are exactly the three things nobody
  * notices are missing. Each check below is one of them.
  *
- * Usage: node check-docs-adoption.mjs [docsDir]
+ * Usage: check-docs-adoption [docsDir | repoRoot]
  *
- * From a consuming repo:
- *   node node_modules/@mydaogs/shared-docs/check-docs-adoption.mjs docs
+ * The argument may be the docs tree itself or the repository root that holds
+ * it, because `docs/` sits at the repository root — above the workspaces, not
+ * inside one. A repo can hold several workspaces, or none that are npm at all,
+ * so the level that owns `docs/` is the only one every project shares.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const docsDir = resolve(process.argv[2] ?? "docs");
+const target = resolve(process.argv[2] ?? "docs");
+
+/**
+ * Accept either level. Pointing at a repo root and being told "no docs
+ * directory" is a worse failure than just looking one level in.
+ */
+const docsDir =
+  basename(target) !== "docs" && existsSync(join(target, "docs"))
+    ? join(target, "docs")
+    : target;
 
 /**
  * This script ships next to the folders it checks against, so it knows exactly
@@ -88,6 +99,54 @@ if (!existsSync(docsDir) || !statSync(docsDir).isDirectory()) {
 const subFolders = listDir(docsDir)
   .filter((e) => e.isDirectory() && !e.name.startsWith("."))
   .map((e) => e.name);
+
+/**
+ * 0. The layout itself.
+ *
+ * `docs/` belongs at the repository root, beside the workspaces rather than
+ * inside one. A tree that sits inside a workspace is invisible to the other
+ * workspaces and moves when that one is restructured; a second tree inside a
+ * workspace splits the answer to "where is this documented", and the copy
+ * nobody opens is the one that goes stale.
+ *
+ * This is the rule that protects the shape, and it is the one no amount of
+ * index discipline can recover once broken.
+ */
+const repoRoot = dirname(docsDir);
+
+if (!existsSync(join(repoRoot, ".git"))) {
+  failures.push(
+    `${docsDir}: not at the repository root — docs/ belongs beside the workspaces, not inside one`,
+  );
+}
+
+/** A nested repo or submodule carries its own docs, and they are not ours to police. */
+function isForeignTree(dir, name) {
+  if (name === "node_modules" || name.startsWith(".")) return true;
+  return existsSync(join(dir, ".git"));
+}
+
+function findStrayDocs(dir, out = []) {
+  for (const entry of listDir(dir)) {
+    if (!entry.isDirectory()) continue;
+    const full = join(dir, entry.name);
+    if (full === docsDir) continue;
+    if (isForeignTree(full, entry.name)) continue;
+    if (entry.name === "docs") {
+      out.push(full);
+      continue;
+    }
+    findStrayDocs(full, out);
+  }
+  return out;
+}
+
+for (const stray of findStrayDocs(repoRoot)) {
+  failures.push(
+    `${stray.slice(repoRoot.length + 1)}/: a second docs tree — the root docs/ is the only one, ` +
+      `and a package documents itself in root-level markdown beside its package.json instead`,
+  );
+}
 
 // 1. One entry point, linking every folder. Without it the tree has as many
 //    starting points as it has folders, and agents told to "start at docs" pick

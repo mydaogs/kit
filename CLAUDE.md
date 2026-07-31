@@ -79,11 +79,13 @@ Note that [`packages/shared-docs/rules/testing-rules.md`](packages/shared-docs/r
 
 `pnpm check-links` resolves every relative markdown link under `packages/shared-docs`. [`docs-readme-template.md`](packages/shared-docs/docs-readme-template.md) is skipped there on purpose — its links resolve in the consumer's `docs/`, not here
 
-[`packages/shared-docs/check-docs-adoption.mjs`](packages/shared-docs/check-docs-adoption.mjs) is the consumer-side counterpart and is **not** wired into `pnpm check` — there is no docs tree here to scan. It ships in the tarball rather than being copied, and is run against an adopted `docs/`:
+[`packages/shared-docs/check-docs-adoption.mjs`](packages/shared-docs/check-docs-adoption.mjs) is the consumer-side counterpart and is **not** wired into `pnpm check` — there is no docs tree here to scan. It ships in the tarball as a `bin` rather than being copied, and is run against an adopted repo:
 
 ```bash
-node packages/shared-docs/check-docs-adoption.mjs ../<some-repo>/docs
+node packages/shared-docs/check-docs-adoption.mjs ../<some-repo>
 ```
+
+It takes the repo root or the `docs/` dir. In a consuming repo `docs/` sits at the repository root, above the workspaces — often above any npm project at all — so the checks are invoked from a repo-root `package.json` that exists only for tooling, not from a workspace. `check-links.mjs` takes a directory for the same reason, defaulting to this package
 
 When editing any of the four `shared-docs` folders, the index entry is part of the change — adding, renaming, moving, or deleting a doc without touching the folder `README.md` fails `pnpm check`
 

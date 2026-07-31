@@ -51,8 +51,10 @@ Package names (`@shared/ui`, `@shared/db`, `@shared/backend-contract`, `@shared/
 - [`features/README.md`](features/README.md) - reusable architecture blueprints
 - [`units/README.md`](units/README.md) - reusable code unit tracking (components, hooks, utils, types)
 - [`docs-readme-template.md`](docs-readme-template.md) - the `docs/README.md` entry point to copy, since nothing upstream can write it
-- `check-docs-adoption.mjs` - CI check that the adopted tree still has an entry point, an index per folder, an ownership record, and no surviving path placeholder
-- `check-links.mjs` - CI check that every relative markdown link resolves
+- `check-docs-adoption` - CI check that `docs/` is at the repository root and is the only docs tree, and that the adopted tree still has an entry point, an index per folder, an ownership record, and no surviving path placeholder
+- `check-docs-links` - CI check that every relative markdown link under a docs tree resolves
+
+Both are `bin` entries, so a repo-root `package.json` can call them by name with nothing else installed
 
 The four folder indexes list every doc the kit carries, including the ones that ship with a package. An entry marked `→ @mydaogs/<package>` is read at that package's root
 
@@ -94,8 +96,9 @@ If a doc describes one package's behaviour, it belongs in that package and is en
    project writes for itself
 7. In each copied folder's `README.md`, add a section listing which of its docs
    came from here, which upstream file each one tracks, and which side to edit
-8. Wire the check into CI:
-   `node node_modules/@mydaogs/shared-docs/check-docs-adoption.mjs docs`
+8. Add a repo-root `package.json` for docs tooling and wire `check:docs` into CI —
+   see [`rules/docs-rules.md`](rules/docs-rules.md#enforcement) for the manifest and
+   what each check covers
 
 Step 7 is what keeps the copy honest. Once the placeholders are replaced a
 copied doc reads as the project's own, and nothing tells a reader that a fuller
