@@ -1,14 +1,14 @@
 "use client";
 
 import { Button } from "@mydaogs/ui";
-import { Calendar } from "./calendar";
-import { FormControl } from "./form";
 import {
+  Calendar,
   Popover,
   PopoverClose,
   PopoverContent,
   PopoverTrigger,
-} from "./popover";
+} from "@mydaogs/ui/client";
+import { FormControl } from "./form";
 import type { GetComponentProps } from "./types";
 import { cn } from "./cn";
 import { CalendarIcon } from "lucide-react";

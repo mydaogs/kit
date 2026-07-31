@@ -24,7 +24,7 @@ const packagesDir = join(root, "packages");
 /** Entry subpaths to import, beyond ".", keyed by package name. */
 const EXTRA_ENTRIES = {
   "@mydaogs/kv": ["./rest"],
-  "@mydaogs/ui": ["./client", "./next"],
+  "@mydaogs/ui": ["./client", "./next", "./form"],
 };
 
 /**
@@ -141,6 +141,7 @@ try {
     "react-dom",
     "next",
     "react-hook-form",
+    "zod",
     "@tanstack/react-query",
     "viem",
     "wagmi",

@@ -55,7 +55,6 @@ export { StatusMessage } from "./StatusMessage";
 export { InfoCard } from "./InfoCard";
 export { InlineData } from "./InlineData";
 export { InlineDataContent } from "./InlineDataContent";
-export { InlineDataLabel } from "./InlineDataLabel";
 export { SideContent } from "./SideContent";
 export { StatusCard, StatusCardTypes } from "./StatusCard";
 export type { StatusCardType } from "./StatusCard";

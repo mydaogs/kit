@@ -14,18 +14,20 @@ npm install @mydaogs/ui
 | --- | --- | --- |
 | `react`, `react-dom` | yes | `^18` or `^19` |
 | `next` | optional | only needed to use `@mydaogs/ui/next` (`AppImage`, `AppImagePreview*`, `createCrossAppLink`, `FooterShell`) |
-| `react-hook-form` | optional | only needed to use the `Form*` components from `@mydaogs/ui/client` |
+| `react-hook-form` | optional | only needed to use `@mydaogs/ui/form` |
+| `zod` | optional | only needed to use `Combobox`'s `validationSchema` prop (`@mydaogs/ui/client`) |
 
 ## Entry points
 
 - `@mydaogs/ui` — RSC-safe primitives and composites with no client directive, importable from a server component
 - `@mydaogs/ui/client` — interactive primitives and composites, bundled with a `"use client"` banner
 - `@mydaogs/ui/next` — modules that depend on `next` (`next/image`, `next/link`, `next/navigation`)
+- `@mydaogs/ui/form` — `Form`/`FormField`/`FormItem`/`FormLabel`/`FormControl`/`FormDescription`/`FormMessage`/`useFormField` and `DatePicker` (which renders inside `FormControl`). Kept out of `./client` deliberately: `react-hook-form` is an optional peer, and a single bundled entry evaluates every top-level import when loaded — folding `Form` into `./client` would make `react-hook-form` a hard requirement for anyone using anything from `./client` at all, not just forms
 - `@mydaogs/ui/styles.css` — the Tailwind v4 stylesheet
 
-The `.` and `./client` barrels are disjoint — each export lives in exactly one of them, matching whether the underlying component needs client interactivity. Importing a client-only export from `.` (or vice versa) is a type error, not a silent misroute.
+The `.`, `./client`, and `./form` barrels are disjoint — each export lives in exactly one of them, matching whether the underlying component needs client interactivity or react-hook-form. Importing a client-only or form-only export from the wrong entry is a type error, not a silent misroute.
 
-`./client` and `./next` reach shared RSC-safe primitives (`Button`, `cn`, …) through the package's own `@mydaogs/ui` specifier rather than duplicating them, so `Button`'s implementation ships once regardless of how many entry points use it.
+`./client`, `./next`, and `./form` reach primitives owned by a different entry (`Button`, `Card`, `Calendar`, `Popover`, …) through the package's own bare specifiers (`@mydaogs/ui`, `@mydaogs/ui/client`, …) rather than duplicating them, so each primitive's implementation ships once regardless of how many entry points use it. `cn` is the one deliberate exception — it's small and stateless enough that a few duplicate copies across entries cost nothing, so it's imported directly rather than threaded through self-references everywhere.
 
 ## Tailwind setup
 

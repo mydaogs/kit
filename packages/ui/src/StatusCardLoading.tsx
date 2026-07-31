@@ -2,7 +2,7 @@
 
 import { LoaderCircle } from "lucide-react";
 import { cn } from "./cn";
-import { StatusCard, StatusCardTypes } from "./StatusCard";
+import { StatusCard, StatusCardTypes } from "@mydaogs/ui";
 
 type StatusCardLoadingProps = {
   className?: string;

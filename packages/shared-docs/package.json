@@ -1,6 +1,6 @@
 {
   "name": "@mydaogs/shared-docs",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Cross-cutting engineering docs for the kit: rules, architecture decisions, and patterns that belong to no single package",
   "license": "MIT",
   "repository": {

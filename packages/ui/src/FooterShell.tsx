@@ -18,6 +18,8 @@ export type FooterLinkComponent = ComponentType<{
 export interface FooterLinkItem {
   href: string;
   label: string;
+  rel?: string;
+  target?: string;
 }
 
 export interface FooterSection {
@@ -151,7 +153,9 @@ export const FooterShell = ({
                 return (
                   <li key={link.href}>
                     <Button asChild variant="link" size="sm">
-                      <LinkComponent href={href}>{link.label}</LinkComponent>
+                      <LinkComponent href={href} rel={link.rel} target={link.target}>
+                        {link.label}
+                      </LinkComponent>
                     </Button>
                   </li>
                 );

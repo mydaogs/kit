@@ -1,6 +1,6 @@
 "use client";
 
-import { Quote } from "./Quote";
+import { Quote } from "@mydaogs/ui";
 import { Checkbox } from "./checkbox";
 import { Ban } from "lucide-react";
 import { StatusCardLoading } from "./StatusCardLoading";

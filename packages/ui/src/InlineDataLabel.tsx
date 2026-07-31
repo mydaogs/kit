@@ -1,3 +1,5 @@
+"use client";
+
 import { Label } from "./label";
 
 interface InlineDataLabelProps {
