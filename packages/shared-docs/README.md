@@ -50,11 +50,12 @@ Package names (`@shared/ui`, `@shared/db`, `@shared/backend-contract`, `@shared/
 - [`decisions/README.md`](decisions/README.md) - architecture decisions and system structure
 - [`features/README.md`](features/README.md) - reusable architecture blueprints
 - [`units/README.md`](units/README.md) - reusable code unit tracking (components, hooks, utils, types)
-- [`docs-readme-template.md`](docs-readme-template.md) - the `docs/README.md` entry point to copy, since nothing upstream can write it
+- [`docs-readme-template.md`](docs-readme-template.md) - the `docs/README.md` entry point, since nothing upstream can write it
+- `init-docs` - scaffolds the tree into an empty repository and generates the ownership record
 - `check-docs-adoption` - CI check that `docs/` is at the repository root and is the only docs tree, and that the adopted tree still has an entry point, an index per folder, an ownership record, and no surviving path placeholder
 - `check-docs-links` - CI check that every relative markdown link under a docs tree resolves
 
-Both are `bin` entries, so a repo-root `package.json` can call them by name with nothing else installed
+All three are `bin` entries, so a repo-root `package.json` calls them by name with nothing else installed
 
 The four folder indexes list every doc the kit carries, including the ones that ship with a package. An entry marked `→ @mydaogs/<package>` is read at that package's root
 
@@ -85,31 +86,42 @@ If a doc describes one package's behaviour, it belongs in that package and is en
 
 ## Adopting this kit
 
-1. Copy the four folders into the new repo's `docs/`
-2. Copy [`docs-readme-template.md`](docs-readme-template.md) to `docs/README.md` and
-   trim it to the folders the project actually has
-3. Find-and-replace the placeholders from the table above
-4. Delete any doc whose stack choice the project does not adopt, and its index entry
-5. Fill the `units/` inventories — they ship as empty templates on purpose
-6. Add project-specific `product/`, `runbooks/`, and domain feature docs alongside,
-   plus the four decisions in [`decisions/README.md`](decisions/README.md) that every
-   project writes for itself
-7. In each copied folder's `README.md`, add a section listing which of its docs
-   came from here, which upstream file each one tracks, and which side to edit
-8. Add a repo-root `package.json` for docs tooling and wire `check:docs` into CI —
-   see [`rules/docs-rules.md`](rules/docs-rules.md#enforcement) for the manifest and
-   what each check covers
+From an empty repository:
 
-Step 7 is what keeps the copy honest. Once the placeholders are replaced a
-copied doc reads as the project's own, and nothing tells a reader that a fuller
-version exists upstream, or that a fix belongs upstream rather than locally.
-Record it in the folder `README.md` rather than as a banner on each file — per
-[`rules/docs-rules.md`](rules/docs-rules.md), that is where readers are told to
-start, and a per-file banner restates the same fact once per file and goes stale
-one file at a time
+```bash
+git init
+pnpm init
+pnpm add -D @mydaogs/shared-docs
+pnpm exec init-docs
+```
 
-Step 8 is what keeps steps 2 through 7 from silently coming undone. The full
-structure it enforces is stated in [`rules/docs-rules.md`](rules/docs-rules.md)
+`init-docs` scaffolds the whole tree: the four folders, the `docs/README.md`
+entry point, `product/` and `runbooks/` stubs, the four project-authored
+decision stubs, the two `check:docs*` scripts, and — the part worth automating —
+the **ownership record** in each carried folder, generated from the files it
+actually copied at the version actually installed
+
+It refuses to run anywhere but a repository root, because `docs/` inside a
+workspace is the one mistake no later check can recover. It is idempotent:
+a re-run fills what is missing and reports what it left alone
+
+What it cannot do is decide the project's own content:
+
+1. Replace the placeholders from the table above, repo-wide
+2. Delete any doc whose stack choice the project does not adopt, and its index entry
+3. Fill the `units/` inventories — they ship as empty templates on purpose
+4. Answer the four `decisions/` stubs
+5. Run `pnpm check:docs`, which enumerates exactly what is still outstanding
+
+Then wire both checks into CI, triggered on `docs/**` — see
+[`rules/docs-rules.md`](rules/docs-rules.md#enforcement)
+
+The generated ownership record is what keeps the copy honest. Once the
+placeholders are replaced a copied doc reads as the project's own, and nothing
+tells a reader that a fuller version exists upstream, or that a fix belongs
+upstream rather than locally. It goes in the folder `README.md` rather than as a
+banner on each file — that is where readers are told to start, and a per-file
+banner restates the same fact once per file and goes stale one file at a time
 
 ## What is deliberately absent
 

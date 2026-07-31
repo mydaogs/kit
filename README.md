@@ -188,13 +188,17 @@ pnpm check:bare-revalidate ../<monorepo>/apps/backend/src
 - `check-cache-handlers.mjs` — every `cacheComponents` app registers the handler *and* traces it in `outputFileTracingIncludes`
 - `check-no-bare-revalidate.mjs` — backend-only writers do not call bare `revalidateTag`, with an `// allow:` escape hatch on the call line or the line above
 
-A third targets a consuming repo but **ships** rather than being copied, because a docs tree drifts from the day it is adopted and a copied checker is one more thing to keep in sync:
+Three more target a consuming repo but **ship** rather than being copied, because a docs tree drifts from the day it is adopted and a copied checker is one more thing to keep in sync. From an empty repository:
 
 ```bash
-node node_modules/@mydaogs/shared-docs/check-docs-adoption.mjs docs
+git init && pnpm init
+pnpm add -D @mydaogs/shared-docs
+pnpm exec init-docs        # scaffolds docs/, generates the ownership record
+pnpm check:docs            # reports what adoption still owes
+pnpm check:docs-links
 ```
 
-It holds the adopted tree to the structure in [`rules/docs-rules.md`](packages/shared-docs/rules/docs-rules.md): one entry point linking every folder, an index per folder that agrees with the folder, an upstream ownership record in each carried folder, the four decisions no kit can write, and no surviving path placeholder
+`check-docs-adoption` holds the tree to the structure in [`rules/docs-rules.md`](packages/shared-docs/rules/docs-rules.md): `docs/` at the repository root and the only one, one entry point linking every folder, an index per folder that agrees with the folder, an upstream ownership record in each carried folder, the four decisions no kit can write, and no surviving path placeholder
 
 Both fail loudly when they scan zero files. A guard that cannot distinguish "no violations" from "scanned nothing" reports success forever after a directory move — which is its own failure mode, and the first thing to check when one of these goes green unexpectedly.
 

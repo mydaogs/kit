@@ -8,13 +8,14 @@ These rules define where docs live, how a reader reaches them, and how a copied 
 
 - Every time a doc is created, moved, or deleted
 - Every time a folder gains or loses a doc, since the folder index is part of the change
-- When adopting this kit into a new repo
+- When adopting this kit into a new repo — `init-docs` scaffolds everything below that can be generated, and `check-docs-adoption` reports what is left
 
 ## Tree structure
 
 - `docs/` at the **repository root** is the only documentation folder, and sits beside the workspaces rather than inside one. A repo may hold several workspaces or none that are npm at all, so the root is the only level every project shares. Never create a `docs/` directory inside a workspace, app, or package: a second tree splits the answer to "where is this documented" into two places, and the one nobody checks goes stale unobserved. Both halves of this are enforced — see [Enforcement](#enforcement)
 - A reusable package documents itself in root-level markdown next to its `package.json` (`README.md` and siblings). That is not a `docs/` directory, and it is what npm renders
-- `docs/README.md` is the entry point and the only file that indexes the folders. It carries a table of contents linking every folder's `README.md`, and a recommended reading order. Adopt it from [`docs-readme-template.md`](../docs-readme-template.md)
+- `docs/README.md` is the entry point and the only file that indexes the folders. It carries a table of contents linking every folder's `README.md`, and a recommended reading order. `init-docs` writes it from `@mydaogs/shared-docs` → `docs-readme-template.md`
+- A doc in a carried folder never links a file outside that folder by relative path. The four folders are copied out of this package and the target has no `../` to resolve against, so the link is live upstream and dead in every adopted tree. Name the file as `@mydaogs/<package>` → `<path>` instead
 - Four folders are carried from this kit and keep their names: `rules/`, `decisions/`, `features/`, `units/`
 - Every project adds `product/` and `runbooks/` — the kit ships no copy of either, because product vision and operational procedure are project-specific by nature
 - Anything further (`diagrams/`, `legal-drafts/`) is the project's own, and follows the same folder rules

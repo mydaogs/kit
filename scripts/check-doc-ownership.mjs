@@ -126,6 +126,21 @@ for (const folder of INDEXED_FOLDERS) {
   );
   const covered = new Set();
 
+  // These four folders are copied wholesale into a consuming repo's `docs/`.
+  // A relative link that climbs out of the folder resolves here and nowhere
+  // else, so it ships live and lands dead in every adopted tree — invisibly,
+  // because the doc still renders. Name the target as `@mydaogs/<package>` →
+  // `<path>` instead.
+  for (const file of [...onDisk, "README.md"]) {
+    const body = readFileSync(join(dir, file), "utf8");
+    for (const match of body.matchAll(/\]\((\.\.\/[^)]+)\)/g)) {
+      failures.push(
+        `shared-docs/${folder}/${file}: links ${match[1]}, which climbs out of a folder that gets copied — ` +
+          `dead in every adopted tree; name it as \`@mydaogs/<package>\` → \`<path>\``,
+      );
+    }
+  }
+
   for (const line of readFileSync(readmePath, "utf8").split("\n")) {
     // Both escapes are line-scoped on purpose: the pointer has to sit next to
     // the name it excuses, not somewhere else in the document.

@@ -87,6 +87,10 @@ node packages/shared-docs/check-docs-adoption.mjs ../<some-repo>
 
 It takes the repo root or the `docs/` dir. In a consuming repo `docs/` sits at the repository root, above the workspaces — often above any npm project at all — so the checks are invoked from a repo-root `package.json` that exists only for tooling, not from a workspace. `check-links.mjs` takes a directory for the same reason, defaulting to this package
 
+[`init-docs.mjs`](packages/shared-docs/init-docs.mjs) is the other half: it scaffolds the tree into an empty repo and generates each carried folder's ownership record from the files it copied. Changing what `shared-docs` ships changes what it scaffolds, so re-run it into a scratch repo after adding or removing a folder
+
+A doc in `rules/`, `decisions/`, `features/`, or `units/` must not link outside its own folder by relative path. Those four are copied wholesale into a consuming `docs/`, where there is no `../` to resolve against — the link works here and is dead in every adopted tree. `check:doc-ownership` fails on it
+
 When editing any of the four `shared-docs` folders, the index entry is part of the change — adding, renaming, moving, or deleting a doc without touching the folder `README.md` fails `pnpm check`
 
 When writing docs here, follow the repo's own rules:
