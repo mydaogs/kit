@@ -73,7 +73,13 @@ const PLACEHOLDERS = [
 /**
  * Quoting the kit's own wording is not residue. The ownership record exists to
  * say "upstream states this against `<monorepo>`, here it is named" — which
- * cannot be written without the placeholder in it.
+ * cannot be written without the placeholder in it, and an adoption runbook has
+ * to enumerate them outright.
+ *
+ * Scoped to the paragraph, not the line. Prose wraps, so a line-scoped test
+ * made the verdict depend on where a sentence happened to break — the same
+ * sentence passed or failed according to its line width, which taught authors
+ * to reflow text to appease the check rather than to fix anything.
  */
 const DISCUSSES_UPSTREAM = /@mydaogs|\bkit\b/;
 
@@ -261,13 +267,22 @@ for (const file of walkMarkdown(docsDir)) {
   const rel = file.slice(docsDir.length + 1);
   const lines = readFileSync(file, "utf8").split("\n");
 
-  for (const [index, line] of lines.entries()) {
-    if (DISCUSSES_UPSTREAM.test(line)) continue;
-    for (const { re, why } of PLACEHOLDERS) {
-      if (re.test(line)) {
-        failures.push(`${rel}:${index + 1}: unreplaced placeholder ${why}`);
-      }
+  for (let start = 0; start < lines.length; ) {
+    let end = start;
+    while (end < lines.length && lines[end].trim() !== "") end += 1;
+
+    const paragraph = lines.slice(start, end);
+    if (!paragraph.some((line) => DISCUSSES_UPSTREAM.test(line))) {
+      paragraph.forEach((line, offset) => {
+        for (const { re, why } of PLACEHOLDERS) {
+          if (re.test(line)) {
+            failures.push(`${rel}:${start + offset + 1}: unreplaced placeholder ${why}`);
+          }
+        }
+      });
     }
+
+    start = end + 1;
   }
 }
 
