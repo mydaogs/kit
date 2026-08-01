@@ -1,6 +1,6 @@
 {
   "name": "@mydaogs/workspace",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "private": true,
   "type": "module",
   "description": "Portable package kit for Next.js + web3 projects",

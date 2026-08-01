@@ -11,7 +11,7 @@
   - `--border-width: 1px`
   - `--box-shadow-x` / `--box-shadow-y`: `0px`
   - `--reverse-box-shadow-x` / `--reverse-box-shadow-y`: `0px`
-  - `--shadow`, derived from the box-shadow vars above — never hardcode this, override the vars it's built from instead
+  - `--shadow`, derived from the box-shadow vars above — the derivation exists so `Button`'s `active:translate-x-boxShadowX`/`active:translate-y-boxShadowY` press effect stays in sync with whatever shadow an app configures, so prefer overriding the vars it's built from over hardcoding `--shadow` directly. The one exemption: an app that wants a soft, blurred shadow (`0 1px 2px 0 rgb(0 0 0 / 0.05)`, say) rather than the hard-edged offset the vars can produce, and wants the press effect to stay a no-op rather than start translating — that app should hardcode `--shadow` and leave the box-shadow vars at their `0px` defaults
   - `--heading-font-weight: 700`, `--base-font-weight: 500`
 - A `@layer base` block defining secondary surface tokens (`--sheet-grid-color`, `--sheet-grid-image`, `--sheet-grid-size`, `--danger-shell-grid-image`, `--danger-shell-grid-size`, `--capture-btn-active/inactive`) that fall back to `--secondary` / `--border` / `none`
 - `@source "./dist"` — the stylesheet registers its own compiled output as a Tailwind v4 source path, relative to itself, so class names used inside `@mydaogs/ui`'s components are always scanned regardless of where the package lands in `node_modules`
@@ -52,7 +52,7 @@ Geometry (`--border-radius`, `--border-width`, `--box-shadow-x/y`, `--reverse-bo
 }
 ```
 
-Note the asymmetry: `1px` on the horizontal (`to right`) gradient's color stop, none on the vertical (`to bottom`) one. That's not a typo — it's the exact recipe the grid has always rendered with, and copying it with `1px` on both turns the vertical gridlines from a soft fade into a crisp line.
+Note the asymmetry: `1px` on the `to right` gradient's color stop, none on the `to bottom` one. That's not a typo — it's the exact recipe the grid has always rendered with, and copying it with `1px` on both turns the `to bottom` gridlines (the horizontal ones) from a soft fade into a crisp line.
 
 The dangerous dialog shell (`DialogShellHost`) uses separate `--danger-shell-grid-image` / `--danger-shell-grid-size` tokens instead of sharing `--sheet-grid-image` / `--sheet-grid-size` — folding them together would recolor (and rescale) the dangerous shell every time an app customized its sheet grid. `--danger-shell-grid-image` defaults to the same recipe over `--background`, and `--danger-shell-grid-size` defaults to `70px 70px`, so overriding either is optional.
 
