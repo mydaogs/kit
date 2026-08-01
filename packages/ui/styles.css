@@ -79,7 +79,8 @@
         var(--background) 1px,
         transparent 1px
       ),
-      linear-gradient(to bottom, var(--background) 1px, transparent 1px);
+      linear-gradient(to bottom, var(--background), transparent 1px);
+    --danger-shell-grid-size: 70px 70px;
 
     --capture-btn-active: var(--secondary);
     --capture-btn-inactive: var(--border);

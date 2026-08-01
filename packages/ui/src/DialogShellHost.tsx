@@ -23,7 +23,8 @@ import type {
 
 const SHELL_TYPE_CLASSNAMES: Record<DialogShellType, string> = {
   normal: "",
-  dangerous: "bg-danger bg-[image:var(--danger-shell-grid-image)] bg-size-[70px_70px]",
+  dangerous:
+    "bg-danger bg-[image:var(--danger-shell-grid-image)] bg-[size:var(--danger-shell-grid-size)]",
 };
 
 const EMPTY_ENTRIES: readonly DialogShellEntry[] = [];

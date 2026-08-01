@@ -32,7 +32,10 @@ const cvaButton = cva(LAYOUT, {
       link: "underline hover:text-accent-foreground",
       side: "bg-linear-to-br from-background/50 via-background/[var(--bg-opacity)] to-background/50 hover:from-secondary/50 hover:to-secondary/50 border-(length:--border-width-base) border-l-(length:--border-width-base) rounded-l-none rounded-r-lg group-focus-within/focusable:ring-2 ring-ring",
       // Escape hatch: no rounding, no border, no text/bg opacity vars — just
-      // LAYOUT plus whatever the consumer passes through `className`.
+      // LAYOUT plus whatever the consumer passes through `className`. `size`
+      // is a separate axis and still applies its own classes on top (e.g.
+      // the `default` size's h-10 px-4 py-2 text-lg) unless the consumer
+      // also passes `size="reset"`.
       unset: "",
     },
     size: {

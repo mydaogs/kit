@@ -13,7 +13,7 @@
   - `--reverse-box-shadow-x` / `--reverse-box-shadow-y`: `0px`
   - `--shadow`, derived from the box-shadow vars above — never hardcode this, override the vars it's built from instead
   - `--heading-font-weight: 700`, `--base-font-weight: 500`
-- A `@layer base` block defining secondary surface tokens (`--sheet-grid-color`, `--sheet-grid-image`, `--sheet-grid-size`, `--danger-shell-grid-image`, `--capture-btn-active/inactive`) that fall back to `--secondary` / `--border` / `none`
+- A `@layer base` block defining secondary surface tokens (`--sheet-grid-color`, `--sheet-grid-image`, `--sheet-grid-size`, `--danger-shell-grid-image`, `--danger-shell-grid-size`, `--capture-btn-active/inactive`) that fall back to `--secondary` / `--border` / `none`
 - `@source "./dist"` — the stylesheet registers its own compiled output as a Tailwind v4 source path, relative to itself, so class names used inside `@mydaogs/ui`'s components are always scanned regardless of where the package lands in `node_modules`
 
 ## What the consumer must define
@@ -47,12 +47,14 @@ Geometry (`--border-radius`, `--border-width`, `--box-shadow-x/y`, `--reverse-bo
 :root {
   --sheet-grid-image:
     linear-gradient(to right, var(--sheet-grid-color) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--sheet-grid-color) 1px, transparent 1px);
+    linear-gradient(to bottom, var(--sheet-grid-color), transparent 1px);
   --sheet-grid-size: 70px 70px;
 }
 ```
 
-The dangerous dialog shell (`DialogShellHost`) uses a separate `--danger-shell-grid-image` token instead of sharing `--sheet-grid-image` — folding the two together would recolor the dangerous shell every time an app customized its sheet grid. It defaults to the same recipe over `--background`, so overriding it is optional.
+Note the asymmetry: `1px` on the horizontal (`to right`) gradient's color stop, none on the vertical (`to bottom`) one. That's not a typo — it's the exact recipe the grid has always rendered with, and copying it with `1px` on both turns the vertical gridlines from a soft fade into a crisp line.
+
+The dangerous dialog shell (`DialogShellHost`) uses separate `--danger-shell-grid-image` / `--danger-shell-grid-size` tokens instead of sharing `--sheet-grid-image` / `--sheet-grid-size` — folding them together would recolor (and rescale) the dangerous shell every time an app customized its sheet grid. `--danger-shell-grid-image` defaults to the same recipe over `--background`, and `--danger-shell-grid-size` defaults to `70px 70px`, so overriding either is optional.
 
 ## What this stylesheet no longer touches
 
