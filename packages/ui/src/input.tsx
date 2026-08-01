@@ -115,7 +115,7 @@ const Input = React.forwardRef<HTMLInputElement, AppInputProps>(function Input(
         type={type}
         data-slot="input"
         className={cn(
-          "min-w-0 flex-1 rounded-base border-2 border-border pl-3 py-2 text-lg font-base text-foreground placeholder:text-foreground/50 placeholder:text-sm focus-visible:outline-hidden disabled:cursor-not-allowed font-mono bg-secondary/80 disabled:bg-foreground/15",
+          "min-w-0 flex-1 rounded-base border-(length:--border-width-base) border-border pl-3 py-2 text-lg font-base text-foreground placeholder:text-foreground/50 placeholder:text-sm focus-visible:outline-hidden disabled:cursor-not-allowed font-mono bg-secondary/80 disabled:bg-foreground/15",
           sideContent
             ? "rounded-r-none border-r-0"
             : "focus-visible:ring-2 ring-ring",

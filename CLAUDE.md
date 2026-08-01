@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A pnpm workspace that publishes 11 packages to public npm under the `@mydaogs` scope: 10 TypeScript packages plus [`@mydaogs/shared-docs`](packages/shared-docs/README.md), which ships markdown only. Everything is domain-free — no product entities, deployment identifiers, hardcoded chains, or routes. Most packages export **factories**, not singletons: the consuming app supplies its own vocabulary, copy, transport, and storage
+A pnpm workspace that publishes 12 packages to public npm under the `@mydaogs` scope: 11 TypeScript packages plus [`@mydaogs/shared-docs`](packages/shared-docs/README.md), which ships markdown only. Everything is domain-free — no product entities, deployment identifiers, hardcoded chains, or routes. Most packages export **factories**, not singletons: the consuming app supplies its own vocabulary, copy, transport, and storage
 
 There is no app here to run. The deliverables are the tarballs and the docs
 
@@ -13,7 +13,7 @@ There is no app here to run. The deliverables are the tarballs and the docs
 ```bash
 pnpm install
 pnpm check          # what CI runs: check-types + lint + verify + check-links + check:doc-ownership
-pnpm build          # tsup → dist/ for the 10 code packages
+pnpm build          # tsup → dist/ for the 11 code packages
 pnpm verify:dist    # packs, installs, and imports every tarball under plain Node ESM
 ```
 
@@ -103,7 +103,7 @@ When writing docs here, follow the repo's own rules:
 
 ## Releasing
 
-`package.json` is the version of record; the git tag only triggers the release. All 12 manifests (root + 11 packages) carry the same version, and [`release.yml`](.github/workflows/release.yml) fails before any upload if `v<x.y.z>` does not equal every `packages/*/package.json` version. Publishing uses `pnpm -r publish` because only pnpm rewrites `workspace:*` to a real range; provenance is configured through `NPM_CONFIG_PROVENANCE`, since pnpm silently swallows `--provenance`
+`package.json` is the version of record; the git tag only triggers the release. All 13 manifests (root + 12 packages) carry the same version, and [`release.yml`](.github/workflows/release.yml) fails before any upload if `v<x.y.z>` does not equal every `packages/*/package.json` version. Publishing uses `pnpm -r publish` because only pnpm rewrites `workspace:*` to a real range; provenance is configured through `NPM_CONFIG_PROVENANCE`, since pnpm silently swallows `--provenance`
 
 ## Code conventions
 

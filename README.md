@@ -18,6 +18,7 @@ Everything here is domain-free. No product entities, no deployment identifiers, 
 | `@mydaogs/web3-tx` | isomorphic | `@tanstack/react-query` | durable pending-tx registry, cross-tab ownership, reconciliation, vocabulary |
 | `@mydaogs/web3-client` | React client | `react`, `wagmi`, `viem`, `@tanstack/react-query` | contract-write wrapper, pending scope selector |
 | `@mydaogs/indexer` | server | `viem` | event hash, atomic claim contract, capped backoff, ordering watermarks, failure taxonomy |
+| `@mydaogs/ui` | React (RSC-safe entries + client entries) | `react`, `next` (optional), `react-hook-form` (optional) | shadcn-style Radix-backed primitives and composites, Tailwind v4 stylesheet token contract |
 
 ### Why this split
 
@@ -42,7 +43,7 @@ so there is no fork to keep in sync
 ```bash
 pnpm install
 pnpm check     # typecheck + lint all packages, run behavioral and regression tests
-pnpm build     # emit dist/ for all 8 code packages
+pnpm build     # emit dist/ for all 11 code packages
 ```
 
 ## Publishing
@@ -152,7 +153,7 @@ These are the non-obvious properties. Changing them silently breaks correctness 
 
 `pnpm check` runs five things:
 
-- `check-types` — all 8 packages under `strict` with `noUncheckedIndexedAccess`
+- `check-types` — all 11 packages under `strict` with `noUncheckedIndexedAccess`
 - `lint` — eslint flat config across every package and script, `--max-warnings 0`
 - `verify` — behavioral assertions over the pure logic:
   - [`scripts/smoke.ts`](scripts/smoke.ts) — bigint round-trip fidelity (including that look-alike strings survive), error-envelope code preservation and message sanitization, redaction leaking nothing, public-path rejection, backoff dead-lettering vs status-gap persistence, ordering watermarks, failure classification, sync recovery posture per status code, chain-scoped event hashing, tag partitioning, plus a regression block pinning every bug found in review

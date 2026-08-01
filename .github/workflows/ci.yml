@@ -18,7 +18,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # typecheck (8 packages, strict) + lint + tests + markdown link check
+      # typecheck (11 packages, strict) + lint + tests + markdown link check
       - run: pnpm check
       # Publishable output must actually compile, not just typecheck
       - run: pnpm build

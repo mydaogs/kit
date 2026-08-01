@@ -17,7 +17,7 @@ export const InfoCard = ({
 }: InfoCardProps) => (
   <Card className={cn("min-w-0 pt-0", className)}>
     <CardHeader className="w-full px-0">
-      <CardTitle className="bg-linear-to-l from-accent-foreground/90 to-accent-foreground/50 border-b-2 border-foreground px-4 py-px text-lg font-light font-mono text-end text-main/90">
+      <CardTitle className="bg-linear-to-l from-accent-foreground/90 to-accent-foreground/50 border-b-(length:--border-width-base) border-foreground px-4 py-px text-lg font-light font-mono text-end text-main/90">
         {`.${title}`}
       </CardTitle>
     </CardHeader>

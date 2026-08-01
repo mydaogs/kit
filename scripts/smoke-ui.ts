@@ -1,15 +1,16 @@
 /**
  * Regression coverage for @mydaogs/ui's pure logic: the dialog shell store
- * (its only stateful logic), `cn`, and `resolveImageSrc`. Imported by
- * relative source path — not a bare `@mydaogs/ui` specifier — so the root
- * package.json never needs `@mydaogs/ui` as a dependency (see the note in
- * package.json about avoiding an 18-Radix-package root install).
+ * (its only stateful logic), `cn`, `resolveImageSrc`, and `buttonVariants`.
+ * Imported by relative source path — not a bare `@mydaogs/ui` specifier — so
+ * the root package.json never needs `@mydaogs/ui` as a dependency (see the
+ * note in package.json about avoiding an 18-Radix-package root install).
  */
 import assert from "node:assert/strict";
 import { createDialogShellStore } from "../packages/ui/src/dialog-shell/createDialogShellStore.ts";
 import { cn } from "../packages/ui/src/cn.ts";
 import { resolveImageSrc } from "../packages/ui/src/imageSrc.ts";
 import { pathKey } from "../packages/ui/src/tabs-menu/utils.ts";
+import { buttonVariants } from "../packages/ui/src/button.tsx";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -55,6 +56,50 @@ assert.equal(resolveImageSrc({ default: { src: "/baz.png" } }), "/baz.png");
 // ── TabsMenu pathKey ────────────────────────────────────────────────────
 assert.equal(pathKey(["a", "b"]), JSON.stringify(["a", "b"]));
 assert.notEqual(pathKey(["a"]), pathKey(["a", "b"]));
+
+// ── buttonVariants: the "unset" escape hatch ────────────────────────────
+// The variant !== "unset" gate lives inside buttonVariants itself (not in
+// the Button component), so every other caller — calendar.tsx, pagination.tsx,
+// sonner.tsx, CaptureBtn.tsx — gets the same gating without changes on their
+// end. Pin the two things that matter: SKIN drops out, LAYOUT does not.
+{
+  const unsetClasses = buttonVariants({ variant: "unset" });
+  assert.ok(
+    unsetClasses.includes("inline-flex"),
+    "unset still gets LAYOUT — it is applied unconditionally",
+  );
+  assert.ok(
+    !unsetClasses.includes("rounded-base"),
+    "unset drops rounded-base — that's SKIN, gated out by variant !== \"unset\"",
+  );
+  assert.ok(
+    !unsetClasses.includes("text-main-foreground"),
+    "unset drops text-main-foreground — SKIN again",
+  );
+  assert.ok(
+    !unsetClasses.includes("border-"),
+    "unset emits no border-* utility — SKIN and the \"unset\" variant slot (which cva resolves to an empty string) are both gated out",
+  );
+}
+
+{
+  const defaultClasses = buttonVariants();
+  assert.ok(
+    defaultClasses.includes("inline-flex") &&
+      defaultClasses.includes("rounded-base") &&
+      defaultClasses.includes("text-main-foreground"),
+    "the default variant is unchanged by the refactor: LAYOUT and SKIN both apply",
+  );
+  assert.ok(
+    defaultClasses.includes("border-(length:--border-width-base)") &&
+      defaultClasses.includes("bg-main/[var(--bg-opacity)]"),
+    "the default variant keeps its own pre-refactor classes, migrated off the literal border-2",
+  );
+  assert.ok(
+    defaultClasses.includes("h-10") && defaultClasses.includes("px-4"),
+    "the default size is unchanged by the refactor",
+  );
+}
 
 // ── createDialogShellStore: base/stacked ordering ──────────────────────
 {

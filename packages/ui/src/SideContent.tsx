@@ -13,7 +13,7 @@ export const SideContent = ({
   return (
     <div
       className={cn(
-        "bg-secondary/80 rounded-r-lg flex justify-center items-center px-2 border-2 border-l-0",
+        "bg-secondary/80 rounded-r-lg flex justify-center items-center px-2 border-(length:--border-width-base) border-l-0",
         {
           "cursor-not-allowed bg-foreground/15": disabled,
         },

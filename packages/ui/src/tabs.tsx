@@ -92,7 +92,7 @@ function TabsList({
       data-slot="tabs-list"
       ref={listRef}
       className={cn(
-        "relative inline-flex flex-wrap w-full max-w-lg items-center justify-center rounded-xl border-2 border-border bg-secondary/50 text-foreground overflow-clip p-1",
+        "relative inline-flex flex-wrap w-full max-w-lg items-center justify-center rounded-xl border-(length:--border-width-base) border-border bg-secondary/50 text-foreground overflow-clip p-1",
         className,
       )}
       {...props}
@@ -161,7 +161,7 @@ function TabsContent({
     <TabsPrimitive.Content
       data-slot="tabs-content"
       className={cn(
-        "ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         className,
       )}
       {...props}

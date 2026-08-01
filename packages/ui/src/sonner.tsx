@@ -113,7 +113,7 @@ const Toast = ({
   return (
     <div
       className={cn(
-        "relative flex w-full md:max-w-[420px] items-center rounded-md p-5 ring-1 ring-black/5 shadow-shadow border-2",
+        "relative flex w-full md:max-w-[420px] items-center rounded-md p-5 ring-1 ring-border/5 shadow-shadow border-(length:--border-width-base)",
         config.bgClass,
       )}
     >

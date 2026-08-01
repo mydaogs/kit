@@ -228,7 +228,7 @@ export const AppImagePreviewCaption = ({
       )}
       {...props}
     >
-      <div className="max-w-full rounded-full border-2 border-border/70 bg-background/85 px-3 py-1 text-xs font-base text-foreground shadow-shadow backdrop-blur">
+      <div className="max-w-full rounded-full border-(length:--border-width-base) border-border/70 bg-background/85 px-3 py-1 text-xs font-base text-foreground shadow-shadow backdrop-blur">
         {children}
       </div>
     </div>

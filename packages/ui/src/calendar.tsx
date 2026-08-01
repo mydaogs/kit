@@ -124,7 +124,7 @@ function DropdownNav({
         <Button
           size="reset"
           variant="flat"
-          className="px-2 py-px border-2"
+          className="px-2 py-px border-(length:--border-width-base)"
           onClick={handleMonthButtonClick}
         >
           {value.toLocaleString("default", { month: "long" })}
@@ -132,7 +132,7 @@ function DropdownNav({
         <Button
           size="reset"
           variant="flat"
-          className="px-2 py-px border-2"
+          className="px-2 py-px border-(length:--border-width-base)"
           onClick={handleYearButtonClick}
         >
           {value.getFullYear()}
@@ -188,7 +188,7 @@ function Calendar({
           "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
         week: "flex w-full mt-2",
         day_button:
-          "h-9 w-9 text-center text-sm p-0 relative hover:border-2 rounded-md [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md",
+          "h-9 w-9 text-center text-sm p-0 relative hover:border-(length:--border-width-base) rounded-md [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md",
         day: cn(
           buttonVariants({ variant: "ghost" }),
           "h-9 w-9 p-0 font-normal aria-selected:bg-secondary",

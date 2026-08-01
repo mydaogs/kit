@@ -70,11 +70,11 @@ jobs:
       # refuses to publish from.
       #
       # Packages whose version already exists in the registry are skipped, so
-      # bumping one package and tagging does not republish the other eight.
+      # bumping one package and tagging does not republish the other eleven.
       #
       # Provenance attests each tarball to this workflow run. It needs the
       # id-token: write permission above, a public repo, and a `repository`
-      # field in the manifest matching this one — all eleven declare
+      # field in the manifest matching this one — all twelve declare
       # git+https://github.com/mydaogs/kit.git.
       #
       # Configured by env, not by `--provenance`: pnpm does not accept that

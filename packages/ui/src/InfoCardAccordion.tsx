@@ -129,7 +129,7 @@ export const InfoCardAccordion = ({
           className={cn(
             "flex justify-between items-center bg-linear-to-l from-accent-foreground/90 to-accent-foreground/50 border-foreground px-4 py-px cursor-pointer",
             {
-              "border-b-2": isOpen,
+              "border-b-(length:--border-width-base)": isOpen,
               "border-b-0": !isOpen,
             },
             { "cursor-not-allowed": isDisabled },

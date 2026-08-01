@@ -68,7 +68,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "flex flex-col bg-background bg-[linear-gradient(to_right,var(--sheet-grid-color)_1px,transparent_1px),linear-gradient(to_bottom,var(--sheet-grid-color),transparent_1px)] bg-size-[70px_70px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 w-full max-w-[calc(100%-2rem)] h-full max-h-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-base border-2 border-border p-6 shadow-shadow duration-200 sm:max-w-lg",
+          "flex flex-col bg-background bg-[image:var(--sheet-grid-image)] bg-size-[var(--sheet-grid-size)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 w-full max-w-[calc(100%-2rem)] h-full max-h-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-base border-(length:--border-width-base) border-border p-6 shadow-shadow duration-200 sm:max-w-lg",
           className,
         )}
         onOpenAutoFocus={(e) => {

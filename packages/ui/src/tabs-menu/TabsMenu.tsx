@@ -312,7 +312,7 @@ export function TabsMenu<K extends string>({
         className="flex w-full flex-col md:flex-row gap-1 items-center"
       >
         {chipsPath.length > 0 && (
-          <div className="inline-flex max-w-full flex-wrap justify-center items-center gap-1 rounded-xl border-2 border-transparent p-0 transition-all duration-200">
+          <div className="inline-flex max-w-full flex-wrap justify-center items-center gap-1 rounded-xl border-(length:--border-width-base) border-transparent p-0 transition-all duration-200">
             {chipsPath.map((_valueAtDepth: string, index: number) => {
               const path = displayPath.slice(0, index + 1);
               const config = configs.get(pathKey(path));
@@ -365,7 +365,7 @@ export function TabsMenu<K extends string>({
               ref={panelRef}
               role="tablist"
               aria-orientation="horizontal"
-              className="relative inline-flex flex-wrap w-full max-w-lg items-center justify-center rounded-xl border-2 border-border bg-secondary/50 text-foreground overflow-clip p-1 transition-shadow duration-200 hover:shadow-sm"
+              className="relative inline-flex flex-wrap w-full max-w-lg items-center justify-center rounded-xl border-(length:--border-width-base) border-border bg-secondary/50 text-foreground overflow-clip p-1 transition-shadow duration-200 hover:shadow-sm"
               onMouseLeave={() => setHoveredValue(null)}
             >
               <TabIndicator

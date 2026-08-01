@@ -59,7 +59,7 @@ export const DatePicker = (props: DatePickerProps) => {
           <Button
             variant={"flat"}
             className={cn(
-              "relative pl-3 py-2 h-auto text-lg font-normal bg-secondary border-2",
+              "relative pl-3 py-2 h-auto text-lg font-normal bg-secondary border-(length:--border-width-base)",
             )}
             {...rest}
           >

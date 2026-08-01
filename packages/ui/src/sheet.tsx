@@ -59,7 +59,7 @@ function SheetContent({
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "bg-background bg-[linear-gradient(to_right,var(--sheet-grid-color)_1px,transparent_1px),linear-gradient(to_bottom,var(--sheet-grid-color),transparent_1px)] bg-size-[70px_70px] data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 border-2 border-border transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 overflow-visible",
+          "bg-background bg-[image:var(--sheet-grid-image)] bg-size-[var(--sheet-grid-size)] data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 border-(length:--border-width-base) border-border transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 overflow-visible",
           side === "right" &&
             "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right top-0 right-0 h-dvh w-3/4 border-l sm:max-w-sm",
           side === "left" &&
